@@ -12,6 +12,7 @@ cd "$(dirname "$0")"
 
 # The project's own git remote is the source of truth: no network, no keyring,
 # no way to end up pushing at a repository that does not exist.
+FORCE="${FORCE:-0}"
 REMOTE=$(git config --get remote.origin.url 2>/dev/null || true)
 SLUG=$(printf '%s' "$REMOTE" | sed -E 's#^git@[^:]+:##; s#^https://[^/]+/##; s#\.git$##')
 OWNER="${OWNER:-${SLUG%%/*}}"
@@ -38,15 +39,28 @@ touch "$OUT/.nojekyll"
 # point the site at wherever the backend lives, if anywhere
 if [ -n "$APP_BASE" ]; then
   case "$APP_BASE" in
-    *TU-URL*|*tu-url*|*EJEMPLO*|*example.com*|*XXXX*)
-      echo "APP_BASE todavía trae el texto de ejemplo: $APP_BASE" >&2
-      echo "Pon la URL real del túnel o del servidor, o quita APP_BASE." >&2
-      exit 1 ;;
     https://*) : ;;
-    *)
-      echo "APP_BASE tiene que empezar por https:// — recibido: $APP_BASE" >&2
-      exit 1 ;;
+    *) echo "APP_BASE tiene que empezar por https:// — recibido: $APP_BASE" >&2; exit 1 ;;
   esac
+  # A name check is a guessing game. Ask the URL whether it exists: anything
+  # that does not answer must never reach the published site.
+  if [ "$FORCE" != "1" ]; then
+    printf 'comprobando %s ... ' "$APP_BASE"
+    # curl's exit status is the reliable signal: non-zero means the host could
+    # not be resolved or reached. An HTTP 404 still exits 0, and that is right:
+    # the host exists, the path is the app's problem, not the deploy's.
+    if curl -s -o /dev/null -m 10 -L "$APP_BASE" 2>/dev/null; then
+      echo "responde."
+    else
+      echo "no responde."
+      echo "" >&2
+      echo "Esa URL no existe o no está levantada, así que no la publico:" >&2
+      echo "  $APP_BASE" >&2
+      echo "Levanta el túnel o el servidor primero, y vuelve a lanzarlo." >&2
+      echo "Si sabes lo que haces:  FORCE=1 APP_BASE=... ./deploy-site.sh --push" >&2
+      exit 1
+    fi
+  fi
   printf 'window.AGORA_APP_BASE = "%s";\n' "$APP_BASE" > "$OUT/config.js"
   echo "apps → $APP_BASE"
 else
