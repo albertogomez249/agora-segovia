@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#15181C">
+<title>Ágora</title>
+<link rel="stylesheet" href="/shared/theme.css">
+<style>
+  body{background:#C9BFAC;display:flex;justify-content:center;overflow:hidden}
+  #device{
+    width:min(100%,440px);height:100vh;background:var(--stone-01);
+    display:flex;flex-direction:column;position:relative;overflow:hidden;
+  }
+  @media(min-width:460px){#device{height:min(100vh,940px);margin:auto;border-radius:22px;
+    box-shadow:0 30px 90px rgba(21,24,28,.28)}}
+
+  /* ---------------------------------------------------------- brand bar */
+  .brandbar{
+    flex:0 0 auto;padding:14px 20px 11px;background:var(--ink-00);color:var(--stone-00);
+    display:flex;align-items:center;justify-content:space-between;position:relative;
+  }
+  .brandbar::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+    background:linear-gradient(90deg,var(--bronze) 0%,rgba(156,114,70,0) 72%)}
+  .mark{font-family:var(--display);font-size:17px;letter-spacing:.3em;padding-left:.3em}
+  .purse{
+    display:flex;align-items:center;gap:7px;padding:7px 12px 7px 10px;border-radius:999px;
+    background:rgba(244,240,232,.09);font-size:13.5px;font-variant-numeric:tabular-nums;
+    transition:background .16s var(--tap);
+  }
+  .purse:active{background:rgba(244,240,232,.18)}
+  .purse svg{width:16px;height:16px;opacity:.72}
+
+  /* -------------------------------------------------------------- scroll */
+  main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 112px}
+  .screen-head{padding:26px 0 18px}
+  .screen-head h1{font-family:var(--display);font-size:34px;line-height:1.05;margin:9px 0 0}
+  .screen-head p{font-size:14px;color:var(--ink-04);margin:8px 0 0;max-width:32ch;line-height:1.45}
+  .filters{margin:0 -20px 4px;padding:0 20px 16px}
+  .filters + .filters{padding-top:0}
+
+  /* --------------------------------------------------------------- rows */
+  .row-item .lead{
+    flex:0 0 auto;width:42px;height:42px;border-radius:11px;background:var(--stone-02);
+    display:grid;place-items:center;color:var(--ink-03);margin-top:2px;
+  }
+  .row-item .lead svg{width:21px;height:21px}
+  .row-item.featured .lead{background:var(--ink-00);color:var(--bronze-hi)}
+  .cut{font-size:12px;font-weight:700;color:var(--bronze);letter-spacing:.02em}
+
+  /* ------------------------------------------------------------ tab bar */
+  nav.tabs{
+    position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);
+    background:rgba(251,249,245,.92);backdrop-filter:saturate(180%) blur(22px);
+    -webkit-backdrop-filter:saturate(180%) blur(22px);
+    border-top:1px solid var(--line);padding:7px 6px calc(7px + env(safe-area-inset-bottom));
+  }
+  nav.tabs button{
+    display:flex;flex-direction:column;align-items:center;gap:4px;padding:6px 0 4px;
+    color:var(--ink-04);transition:color .18s var(--tap);
+  }
+  nav.tabs button svg{width:23px;height:23px;transition:transform .22s var(--ease)}
+  nav.tabs button .lb{font-size:10px;letter-spacing:.06em;font-weight:600}
+  nav.tabs button[aria-selected="true"]{color:var(--ink-00)}
+  nav.tabs button[aria-selected="true"] svg{transform:translateY(-1px)}
+  nav.tabs button:active svg{transform:scale(.88)}
+
+  /* -------------------------------------------------------------- sheet */
+  .scrim{position:absolute;inset:0;background:rgba(21,24,28,.42);opacity:0;pointer-events:none;
+    transition:opacity .28s var(--ease);z-index:40;backdrop-filter:blur(2px)}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:41;background:var(--stone-01);
+    border-radius:20px 20px 0 0;transform:translateY(101%);
+    transition:transform .4s var(--ease);max-height:93%;display:flex;flex-direction:column;
+    box-shadow:0 -1px 0 rgba(21,24,28,.1);
+  }
+  .sheet.on{transform:translateY(0)}
+  .sheet .grab{flex:0 0 auto;padding:9px 0 3px;display:grid;place-items:center}
+  .sheet .grab i{width:36px;height:4px;border-radius:2px;background:var(--stone-04);display:block}
+  .sheet .scrollable{overflow-y:auto;padding:12px 24px 0}
+  .sheet .foot{flex:0 0 auto;padding:16px 24px calc(22px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,rgba(244,240,232,0),var(--stone-01) 26%)}
+  .sheet-x{position:absolute;top:12px;right:16px;width:32px;height:32px;border-radius:50%;
+    background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
+  .sheet-x svg{width:15px;height:15px}
+
+  /* --------------------------------------------------------- price block */
+  .ledger{border-top:1px solid var(--line);margin:22px 0 0}
+  .ledger .ln{display:flex;justify-content:space-between;align-items:baseline;
+    padding:12px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
+  .ledger .ln .k{color:var(--ink-04)}
+  .ledger .ln.total{border-bottom:0;padding-bottom:4px}
+
+  /* ---------------------------------------------------------------- pass */
+  .pass{background:var(--ink-00);color:var(--stone-00);border-radius:16px;overflow:hidden;position:relative}
+  .pass .head{padding:22px 22px 18px;text-align:center}
+  .pass .perf{position:relative;height:1px;background:repeating-linear-gradient(90deg,
+    rgba(244,240,232,.3) 0 6px,transparent 6px 12px)}
+  .pass .perf::before,.pass .perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;
+    border-radius:50%;background:var(--stone-01)}
+  .pass .perf::before{left:-9px}.pass .perf::after{right:-9px}
+  .pass .code{padding:26px 22px 10px;text-align:center;font-family:var(--display);
+    font-size:42px;letter-spacing:.24em;text-indent:.24em;color:var(--stone-00)}
+  .pass .foot{padding:0 22px 30px;text-align:center;position:relative;z-index:1}
+  .pass .wm{position:absolute;left:0;right:0;bottom:-1px;color:var(--bronze-hi);
+    pointer-events:none;z-index:0}
+
+  /* --------------------------------------------------------------- plates */
+  .plate{border-radius:12px;overflow:hidden;background:var(--stone-02)}
+  .row-item .lead{display:block;width:54px;height:54px;border-radius:12px;overflow:hidden;background:var(--stone-02);
+    flex:0 0 auto;margin-top:2px}
+  .row-item .lead svg{width:100%;height:100%}
+
+  /* horizontal rail of hero cards */
+  .rail{display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;margin:0 -20px;padding:2px 20px 18px}
+  .rail::-webkit-scrollbar{display:none}
+  .railcard{flex:0 0 214px;border-radius:14px;overflow:hidden;position:relative;
+    background:var(--ink-00);text-align:left;transition:transform .18s var(--tap)}
+  .railcard:active{transform:scale(.975)}
+  .railcard .art{display:block;height:112px;position:relative;overflow:hidden}
+  .railcard .art::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(21,24,28,0) 38%,rgba(21,24,28,.82) 100%)}
+  .railcard .over{display:block;position:absolute;left:0;right:0;bottom:0;padding:11px 13px;color:#fff;z-index:1}
+  .railcard .over .n{display:block;font-family:var(--display);font-size:16.5px;line-height:1.15;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .railcard .over .m{display:block;font-size:11.5px;opacity:.88;margin:3px 0 0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .railcard .bar{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 13px;background:var(--stone-00)}
+  .railcard .bar .p{font-family:var(--display);font-size:19px;color:var(--oxblood)}
+  .railcard .bar .w{font-size:11.5px;color:var(--ink-04);text-decoration:line-through}
+
+  /* big event plate */
+  .evcard{display:block;width:100%;text-align:left;border-radius:14px;overflow:hidden;
+    background:var(--stone-00);border:1px solid var(--line);margin:0 0 13px;
+    transition:transform .18s var(--tap)}
+  .evcard:active{transform:scale(.99)}
+  .evcard .art{display:block;height:124px;position:relative;overflow:hidden}
+  .evcard .art::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(21,24,28,.1) 40%,rgba(21,24,28,.72) 100%)}
+  .evcard .art .tagline,.evcard .art .when{z-index:1}
+  .evcard .art .tagline{display:block;position:absolute;left:12px;top:11px;background:rgba(21,24,28,.6);
+    color:#fff;border-radius:6px;padding:4px 9px;font-size:10.5px;font-weight:700;
+    letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(6px)}
+  .evcard .art .when{display:block;position:absolute;left:13px;bottom:11px;right:13px;color:#fff;
+    font-family:var(--display);font-size:15px;text-shadow:0 1px 8px rgba(0,0,0,.5);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .evcard .meat{display:block;padding:13px 15px 15px}
+  .evcard .meat .n{display:block;font-size:16.5px;font-weight:600;line-height:1.25;
+    letter-spacing:-.015em}
+  .evcard .meat .m{display:block;font-size:12.5px;color:var(--ink-04);margin:4px 0 0;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .evcard .meat .row2{display:flex;align-items:baseline;justify-content:space-between;margin:11px 0 0}
+
+  /* sheet hero */
+  .hero{height:150px;margin:-12px -24px 18px;position:relative;overflow:hidden}
+  .hero::after{content:'';position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(21,24,28,.05) 32%,rgba(21,24,28,.78) 100%)}
+  .hero .cap{position:absolute;left:24px;bottom:14px;right:24px;color:#fff;z-index:1}
+  .hero .cap .k{font-family:var(--display);font-size:10.5px;letter-spacing:.3em;
+    text-transform:uppercase;opacity:.86}
+  .hero .cap .n{font-family:var(--display);font-size:25px;line-height:1.1;margin:7px 0 0;
+    text-shadow:0 2px 14px rgba(0,0,0,.45)}
+
+  /* ------------------------------------------------------- membership card */
+  .mcard{position:relative;border-radius:17px;overflow:hidden;aspect-ratio:1.586;
+    background:linear-gradient(145deg,#232A32 0%,#15181C 56%,#1C222A 100%);
+    color:var(--stone-00);box-shadow:0 18px 40px rgba(21,24,28,.3)}
+  .mcard .pat{position:absolute;inset:0;opacity:.17;color:var(--bronze-hi)}
+  .mcard .foil{position:absolute;left:0;right:0;top:0;height:3px;
+    background:linear-gradient(90deg,#6B4A28,#E3BE8C 28%,#9C7246 58%,#E3BE8C 82%,#6B4A28)}
+  .mcard .inner{position:absolute;inset:0;padding:18px 20px;display:flex;flex-direction:column}
+  .mcard .top{display:flex;align-items:flex-start;justify-content:space-between}
+  .mcard .wm{font-family:var(--display);font-size:16px;letter-spacing:.3em}
+  .mcard .seal{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
+    letter-spacing:.11em;text-transform:uppercase;color:#0F1216;background:var(--bronze-hi);
+    border-radius:5px;padding:4px 8px}
+  .mcard .seal svg{width:11px;height:11px;stroke-width:3}
+  .mcard .nm{font-family:var(--display);font-size:25px;line-height:1.1;margin:auto 0 0}
+  .mcard .uni{font-size:11.5px;color:#A9B3BE;margin:5px 0 0}
+  .mcard .bot{display:flex;align-items:flex-end;justify-content:space-between;margin:13px 0 0}
+  .mcard .no{font-size:13px;letter-spacing:.17em;color:#C7CFD8;font-variant-numeric:tabular-nums}
+  .mcard .since{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:#79838E;
+    text-align:right;line-height:1.5}
+
+  /* ------------------------------------------------------------ stat band */
+  .band{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:13px;overflow:hidden;margin:18px 0 0}
+  .band .c{background:var(--stone-00);padding:14px 12px;text-align:center}
+  .band .c .v{font-family:var(--display);font-size:23px;line-height:1}
+  .band .c .v.coin{color:var(--oxblood)}
+  .band .c .k{font-size:10.5px;color:var(--ink-04);margin:6px 0 0;letter-spacing:.03em}
+
+  /* ---------------------------------------------------------- guest strip */
+  .guest{display:flex;align-items:center;gap:11px;background:var(--ink-00);color:var(--stone-01);
+    border-radius:13px;padding:13px 15px;margin:0 0 18px}
+  .guest .t{flex:1;font-size:13.5px;line-height:1.45}
+  .guest .t b{color:var(--bronze-hi);font-weight:600}
+
+  /* ----------------------------------------------------------- proof chips */
+  .proof{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-04)}
+  .proof.hot{color:var(--oxblood);font-weight:600}
+  .proof svg{width:12px;height:12px}
+
+  /* ---------------------------------------------------------------- auth */
+  #gate{position:absolute;inset:0;z-index:60;animation:rise .3s var(--ease) both;background:var(--ink-00);color:var(--stone-00);
+    display:flex;flex-direction:column;padding:0 28px calc(30px + env(safe-area-inset-bottom));
+    overflow-y:auto}
+  #gate .top{flex:1;display:flex;flex-direction:column;justify-content:center;padding:54px 0 26px}
+  #gate .wm{font-family:var(--display);font-size:clamp(44px,13vw,58px);letter-spacing:.17em;
+    padding-left:.17em;line-height:1}
+  #gate .tag{color:var(--ink-04);font-size:15px;line-height:1.55;margin:18px 0 0;max-width:27ch}
+  #gate .tag b{color:var(--stone-02);font-weight:500}
+  #gate .inp{background:rgba(244,240,232,.06);border-color:rgba(244,240,232,.14);color:var(--stone-00)}
+  #gate .inp:focus{background:rgba(244,240,232,.1);border-color:var(--bronze-hi)}
+  #gate .inp::placeholder{color:#5D6670}
+  #gate .lbl{color:var(--ink-04)}
+  #gate .codefield{background:rgba(244,240,232,.06);border-color:rgba(244,240,232,.14);color:var(--stone-00)}
+  #gate .note{font-size:12.5px;color:var(--ink-04);line-height:1.6;margin:16px 0 0}
+  #gate .note b{color:var(--bronze-hi);font-weight:600}
+  #gate .arc{color:var(--bronze);margin:0 0 6px}
+  .sent{border:1px solid rgba(244,240,232,.14);border-radius:12px;padding:14px 16px;margin:0 0 20px;
+    font-size:13.5px;color:var(--ink-04);line-height:1.55;background:rgba(244,240,232,.04)}
+  .sent b{color:var(--stone-01);font-weight:500}
+  .sent .big{font-family:var(--display);font-size:22px;letter-spacing:.22em;color:var(--bronze-hi);
+    display:block;margin:7px 0 0}
+
+  /* --------------------------------------------------------------- toast */
+  #toast{position:absolute;left:50%;bottom:98px;transform:translate(-50%,14px);z-index:70;
+    background:var(--ink-00);color:var(--stone-00);padding:12px 18px;border-radius:12px;
+    font-size:14px;max-width:88%;opacity:0;pointer-events:none;
+    transition:opacity .22s var(--ease),transform .22s var(--ease);
+    box-shadow:0 12px 34px rgba(21,24,28,.3);display:flex;align-items:center;gap:9px}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+  #toast svg{width:17px;height:17px;flex:0 0 auto;color:var(--bronze-hi)}
+  #toast.bad svg{color:#E08E72}
+</style>
+</head>
+<body>
+<div id="device">
+  <header class="brandbar">
+    <span class="mark">ÁGORA</span>
+    <button class="purse" id="purse" aria-label="Wallet"><span id="purseVal">—</span></button>
+  </header>
+  <main id="view"></main>
+  <nav class="tabs" id="tabs" role="tablist"></nav>
+
+  <section id="gate" class="hide">
+    <div class="top">
+      <div class="arc" id="gateArc"></div>
+      <div class="wm">ÁGORA</div>
+      <p class="tag" id="gateWhy">The student card of Segovia.<br><b>Verified by your university. Nobody else.</b></p>
+      <div style="height:34px"></div>
+      <div id="gate1">
+        <label class="field"><span class="lbl">University email</span>
+          <input class="inp" id="email" type="email" inputmode="email" autocomplete="email"
+                 autocapitalize="off" spellcheck="false" placeholder="you@student.ie.edu">
+          <span class="msg" id="emailMsg"></span>
+        </label>
+        <button class="btn btn--bronze btn--block" id="send">Continue</button>
+        <p class="note">Only <b>@student.ie.edu</b>, <b>@ie.edu</b> and <b>@uva.es</b> may enter.
+          That is what makes every price here a student price.</p>
+      </div>
+      <div id="gate2" class="hide">
+        <div class="sent" id="sent"></div>
+        <label class="field"><span class="lbl">Six digits</span>
+          <input class="codefield" id="code" inputmode="numeric" maxlength="6" placeholder="······">
+          <span class="msg" id="codeMsg"></span>
+        </label>
+        <label class="field hide" id="nameWrap"><span class="lbl">Your name</span>
+          <input class="inp" id="name" autocomplete="name" placeholder="Marta Ruiz"></label>
+        <button class="btn btn--bronze btn--block" id="verify">Enter</button>
+        <button class="btn btn--plain btn--block" id="again" style="margin-top:6px">Use another address</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet"></div>
+  <div id="toast"></div>
+</div>
+<script src="/shared/icons.js"></script>
+<script src="/shared/art.js"></script>
+<script src="/shared/api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

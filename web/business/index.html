@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#15181C">
+<title>Ágora · for the house</title>
+<link rel="stylesheet" href="/shared/theme.css">
+<style>
+  body{background:var(--stone-01)}
+
+  /* ----------------------------------------------------------------- gate */
+  #gate{position:fixed;inset:0;z-index:50;background:var(--ink-00);color:var(--stone-00);
+    display:grid;grid-template-columns:1.05fr .95fr}
+  @media(max-width:900px){#gate{grid-template-columns:1fr}#gate .plate{display:none}}
+  #gate .form{display:flex;flex-direction:column;justify-content:center;padding:48px clamp(28px,6vw,76px)}
+  #gate .wm{font-family:var(--display);font-size:clamp(40px,5vw,54px);letter-spacing:.17em;
+    padding-left:.17em;line-height:1;margin:14px 0 0}
+  #gate .tag{color:var(--ink-04);font-size:16px;line-height:1.6;margin:20px 0 38px;max-width:36ch}
+  #gate .tag b{color:var(--stone-02);font-weight:500}
+  #gate .inp,#gate .codefield{background:rgba(244,240,232,.06);border-color:rgba(244,240,232,.14);
+    color:var(--stone-00)}
+  #gate .inp:focus,#gate .codefield:focus{border-color:var(--bronze-hi);background:rgba(244,240,232,.1)}
+  #gate .inp::placeholder{color:#5D6670}
+  #gate .lbl{color:var(--ink-04)}
+  #gate .note{font-size:13px;color:var(--ink-04);line-height:1.65;margin:20px 0 0;max-width:40ch}
+  #gate .note b{color:var(--bronze-hi);font-weight:600}
+  .plate{position:relative;background:var(--ink-01);overflow:hidden;
+    display:flex;flex-direction:column;justify-content:flex-end;padding:0 0 0 0}
+  .plate .quote{padding:0 clamp(32px,4vw,60px) 10vh;max-width:40ch}
+  .plate .quote p{font-family:var(--display);font-size:clamp(22px,2.4vw,30px);line-height:1.35;
+    color:var(--stone-02)}
+  .plate .quote .who{font-size:13px;color:var(--ink-04);margin:18px 0 0;letter-spacing:.02em}
+  .plate .arcbg{position:absolute;left:0;right:0;top:14vh;color:var(--bronze);opacity:.9}
+  .sent{border:1px solid rgba(244,240,232,.14);border-radius:12px;padding:15px 17px;margin:0 0 22px;
+    font-size:13.5px;color:var(--ink-04);line-height:1.6;background:rgba(244,240,232,.04);max-width:34rem}
+  .sent b{color:var(--stone-01);font-weight:500}
+  .sent .big{font-family:var(--display);font-size:23px;letter-spacing:.24em;color:var(--bronze-hi);
+    display:block;margin:8px 0 2px}
+
+  /* ---------------------------------------------------------------- shell */
+  #shell{display:grid;grid-template-columns:252px 1fr;min-height:100vh}
+  aside{background:var(--ink-00);color:var(--stone-02);display:flex;flex-direction:column;
+    padding:22px 14px 16px;position:sticky;top:0;height:100vh}
+  aside .brand{padding:4px 12px 2px;font-family:var(--display);font-size:19px;letter-spacing:.3em}
+  aside .forwhom{padding:0 12px 24px;margin-top:7px}
+  aside nav{display:flex;flex-direction:column;gap:2px}
+  aside nav button{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;
+    color:#9BA5B1;font-size:14.5px;font-weight:500;text-align:left;width:100%;
+    transition:background .16s var(--tap),color .16s var(--tap)}
+  aside nav button svg{width:19px;height:19px;flex:0 0 auto;opacity:.9}
+  aside nav button:hover{background:rgba(244,240,232,.05);color:var(--stone-01)}
+  aside nav button[aria-current="true"]{background:rgba(244,240,232,.08);color:var(--stone-00)}
+  aside nav button[aria-current="true"] svg{color:var(--bronze-hi)}
+  aside .pip{margin-left:auto;background:var(--bronze);color:#fff;font-size:11px;font-weight:700;
+    min-width:19px;height:19px;border-radius:999px;display:grid;place-items:center;padding:0 5px}
+  aside .foot{margin-top:auto;padding-top:16px;border-top:1px solid var(--line-dark)}
+  aside .who{padding:4px 12px 12px;font-size:12.5px;color:var(--ink-04);line-height:1.5}
+  aside .who b{display:block;color:var(--stone-01);font-size:13.5px;font-weight:600;margin-bottom:2px}
+
+  main{padding:40px clamp(24px,4vw,56px) 80px;max-width:1240px}
+  .page-head{margin:0 0 32px}
+  .page-head h1{font-family:var(--display);font-size:38px;line-height:1.05;margin:10px 0 0}
+  .page-head .sub{color:var(--ink-04);font-size:15px;margin:10px 0 0;max-width:56ch;line-height:1.55}
+
+  /* ---------------------------------------------------------------- stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;margin:0 0 34px}
+  .stats .s{background:var(--stone-00);padding:20px 22px}
+  .stats .s .k{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--ink-04);
+    font-weight:600}
+  .stats .s .v{font-family:var(--display);font-size:32px;line-height:1.1;margin:10px 0 0}
+  .stats .s .v.coin{color:var(--oxblood)}
+  .stats .s .n{font-size:12.5px;color:var(--ink-04);margin:6px 0 0}
+  @media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+  .panel{background:var(--stone-00);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .panel h3{font-family:var(--display);font-size:20px;margin:0 0 4px}
+  .panel .ph{font-size:13.5px;color:var(--ink-04);margin:0 0 16px}
+  .cols2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:0 0 34px}
+  .cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media(max-width:1000px){.cols2,.cols3{grid-template-columns:1fr}}
+
+  .kv{display:flex;justify-content:space-between;align-items:baseline;padding:11px 0;
+    border-bottom:1px solid var(--line-soft);font-size:14.5px}
+  .kv:last-child{border-bottom:0}
+  .kv .k{color:var(--ink-03)}
+  .kv .v{font-weight:600;font-variant-numeric:tabular-nums}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;
+    color:var(--ink-04);font-weight:700;padding:0 14px 11px}
+  tbody td{padding:14px;border-top:1px solid var(--line-soft);vertical-align:middle}
+  tbody tr:hover{background:var(--stone-01)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ------------------------------------------------------------ assistant */
+  .lab{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
+  @media(max-width:1060px){.lab{grid-template-columns:1fr}}
+  .talk{background:var(--stone-00);border:1px solid var(--line);border-radius:14px;
+    display:flex;flex-direction:column;height:min(70vh,620px)}
+  .thread{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px}
+  .bub{max-width:82%;padding:13px 16px;font-size:14.5px;line-height:1.58;white-space:pre-wrap;
+    border-radius:14px;animation:rise .4s var(--ease) both}
+  .bub.assistant{background:var(--stone-01);border:1px solid var(--line-soft);
+    border-bottom-left-radius:5px;align-self:flex-start}
+  .bub.business{background:var(--ink-00);color:var(--stone-00);border-bottom-right-radius:5px;
+    align-self:flex-end}
+  .quick{display:flex;flex-wrap:wrap;gap:8px;padding:0 22px 14px}
+  .quick button{border:1px solid var(--bronze);color:var(--bronze-lo);background:transparent;
+    border-radius:999px;padding:8px 15px;font-size:13.5px;font-weight:500;
+    transition:background .16s var(--tap),color .16s var(--tap)}
+  .quick button:hover{background:var(--bronze);color:#FFFDF9}
+  .say{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
+  .say .inp{min-height:46px}
+  .draft{background:var(--ink-00);color:var(--stone-01);border-radius:14px;padding:24px;
+    position:relative;overflow:hidden}
+  .draft h4{font-family:var(--display);font-size:21px;margin:12px 0 4px;color:var(--stone-00)}
+  .draft .es{font-size:13.5px;color:var(--ink-04);margin:0 0 18px}
+  .draft .ln{display:flex;justify-content:space-between;padding:9px 0;font-size:13.5px;
+    border-bottom:1px solid var(--line-dark)}
+  .draft .ln:last-of-type{border-bottom:0}
+  .draft .ln .k{color:var(--ink-04)}
+  .draft .ln .v{font-variant-numeric:tabular-nums}
+  .draft .ln.hi .v{color:var(--bronze-hi);font-weight:600}
+  .draft .warn{margin:16px 0 0;padding:12px 14px;border-radius:10px;font-size:13px;line-height:1.55;
+    background:rgba(142,59,34,.2);color:#E8A892}
+  .draft .prose{margin:18px 0 0;font-size:13px;line-height:1.65;color:#B4BDC7}
+  .draft .prose b{display:block;color:var(--bronze-hi);font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;margin:0 0 5px;font-weight:600}
+  .draft .wm{position:absolute;left:0;right:0;bottom:-2px;color:var(--bronze-hi);opacity:.9}
+
+  /* ----------------------------------------------------------------- till */
+  .till{max-width:430px}
+  .till .codefield{font-size:36px;min-height:76px}
+  .result{margin:18px 0 0;border-radius:12px;padding:18px 20px;border:1px solid var(--line);
+    background:var(--stone-00);animation:rise .4s var(--ease) both}
+  .result.good{border-color:rgba(74,107,85,.35);background:rgba(74,107,85,.07)}
+  .result.bad{border-color:rgba(142,59,34,.3);background:rgba(142,59,34,.06)}
+  .result .big{font-family:var(--display);font-size:22px;margin:0 0 4px}
+
+  #toast{position:fixed;left:50%;bottom:30px;transform:translate(-50%,14px);z-index:70;
+    background:var(--ink-00);color:var(--stone-00);padding:13px 19px;border-radius:12px;
+    font-size:14.5px;opacity:0;pointer-events:none;display:flex;align-items:center;gap:10px;
+    transition:opacity .22s var(--ease),transform .22s var(--ease);
+    box-shadow:0 16px 40px rgba(21,24,28,.28)}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+  #toast svg{width:17px;height:17px;color:var(--bronze-hi)}
+  #toast.bad svg{color:#E08E72}
+</style>
+</head>
+<body>
+<section id="gate">
+  <div class="form">
+    <div class="inscript">FOR THE HOUSES OF SEGOVIA</div>
+    <div class="wm">ÁGORA</div>
+    <p class="tag">Four thousand verified students, one channel.
+      <b>The assistant writes your profile, prices your offer and publishes it</b> — you never
+      fill in a form.</p>
+    <div id="g1" style="max-width:34rem">
+      <label class="field"><span class="lbl">Professional email</span>
+        <input class="inp" id="email" type="email" inputmode="email" autocomplete="email"
+               autocapitalize="off" spellcheck="false" placeholder="hola@tunegocio.es">
+        <span class="msg"></span></label>
+      <button class="btn btn--bronze" id="send" style="min-width:180px">Continue</button>
+      <p class="note">University addresses belong to the student app. This side is for the house.
+        Demo: <b>hola@lamuralla.es</b> · <b>info@casadelcordon.es</b> — or any new address to watch
+        the assistant set up a business from nothing.</p>
+    </div>
+    <div id="g2" class="hide" style="max-width:34rem">
+      <div class="sent" id="sent"></div>
+      <label class="field"><span class="lbl">Six digits</span>
+        <input class="codefield" id="code" inputmode="numeric" maxlength="6" placeholder="······">
+        <span class="msg"></span></label>
+      <label class="field hide" id="nameWrap"><span class="lbl">Name of the house</span>
+        <input class="inp" id="name" placeholder="Bar La Muralla"></label>
+      <button class="btn btn--bronze" id="verify" style="min-width:180px">Enter</button>
+      <button class="btn btn--plain" id="again">Use another address</button>
+    </div>
+  </div>
+  <div class="plate">
+    <div class="arcbg" id="plateArc"></div>
+    <div class="quote">
+      <p>“I would happily fill my empty tables at six with students. I just have no way of
+         telling them.”</p>
+      <div class="who">Owner, 48 covers, inside the walls — field research, Segovia</div>
+    </div>
+  </div>
+</section>
+
+<div id="shell" class="hide">
+  <aside>
+    <div class="brand">ÁGORA</div>
+    <div class="forwhom inscript dim">FOR THE HOUSE</div>
+    <nav id="nav"></nav>
+    <div class="foot">
+      <div class="who" id="who"></div>
+      <button class="btn btn--plain" id="out" style="padding-left:12px">Sign out</button>
+    </div>
+  </aside>
+  <main id="view"></main>
+</div>
+<div id="toast"></div>
+<script src="/shared/icons.js"></script>
+<script src="/shared/api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

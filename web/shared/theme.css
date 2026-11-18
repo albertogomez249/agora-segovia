@@ -1,0 +1,187 @@
+/* ============================================================================
+   ÁGORA — design system
+   Roman inscriptional display type on travertine, bronze as the only metal,
+   oxblood reserved exclusively for price. Hairlines instead of boxes.
+   UI text uses the native system face so it renders the way the OS intends.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+
+:root{
+  /* --- stone ------------------------------------------------------------ */
+  --stone-00:#FBF9F5;
+  --stone-01:#F4F0E8;
+  --stone-02:#EBE5D9;
+  --stone-03:#DFD7C7;
+  --stone-04:#C9BFAC;
+
+  /* --- ink -------------------------------------------------------------- */
+  --ink-00:#15181C;
+  --ink-01:#1F242A;
+  --ink-02:#2B323A;
+  --ink-03:#4A535E;
+  --ink-04:#78828E;
+
+  /* --- metal & earth ---------------------------------------------------- */
+  --bronze:#9C7246;
+  --bronze-lo:#8A6239;
+  --bronze-hi:#C19A68;
+  --bronze-wash:#F0E8DC;
+  --oxblood:#8E3B22;        /* price only */
+  --verd:#4A6B55;           /* confirmations only */
+
+  --line:rgba(21,24,28,.10);
+  --line-soft:rgba(21,24,28,.06);
+  --line-dark:rgba(244,240,232,.14);
+
+  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;
+  --display:'Marcellus',Georgia,'Times New Roman',serif;
+
+  --ease:cubic-bezier(.32,.72,0,1);
+  --tap:cubic-bezier(.2,0,.2,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--ui);
+  font-size:16px;line-height:1.45;letter-spacing:-.01em;
+  color:var(--ink-00);background:var(--stone-01);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+.hide{display:none !important}
+
+/* --------------------------------------------------------------- type --- */
+.display{font-family:var(--display);font-weight:400;letter-spacing:0}
+.t-hero{font-family:var(--display);font-size:clamp(34px,8vw,44px);line-height:1.04;letter-spacing:-.005em}
+.t-title{font-family:var(--display);font-size:28px;line-height:1.1}
+.t-sub{font-family:var(--display);font-size:20px;line-height:1.2}
+.t-body{font-size:15px;line-height:1.5;color:var(--ink-02)}
+.t-meta{font-size:13px;line-height:1.4;color:var(--ink-04);letter-spacing:0}
+
+/* Roman inscriptional label: capitals, wide tracking, interpuncts */
+.inscript{
+  font-family:var(--display);
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.34em;
+  color:var(--bronze);line-height:1;
+}
+.inscript.dim{color:var(--ink-04)}
+.inscript.on-dark{color:var(--bronze-hi)}
+
+.numeral{font-family:var(--display);font-feature-settings:'lnum';letter-spacing:.02em}
+.price{font-family:var(--display);font-size:25px;line-height:1;color:var(--oxblood);letter-spacing:.01em}
+.price.lg{font-size:34px}
+.was{font-size:13px;color:var(--ink-04);text-decoration:line-through;letter-spacing:0}
+
+/* ------------------------------------------------------------ surfaces --- */
+.rule{height:1px;background:var(--line);border:0}
+.rule-bronze{height:1px;background:linear-gradient(90deg,var(--bronze) 0%,rgba(156,114,70,.15) 100%);border:0}
+
+/* ------------------------------------------------------------- buttons --- */
+.btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:50px;padding:0 22px;border-radius:12px;
+  background:var(--ink-00);color:var(--stone-00);
+  font-size:16px;font-weight:500;letter-spacing:-.01em;
+  transition:transform .18s var(--tap),opacity .18s var(--tap),background .18s var(--tap);
+}
+.btn:active{transform:scale(.975)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn--bronze{background:var(--bronze);color:#FFFDF9}
+.btn--bronze:hover{background:var(--bronze-lo)}
+.btn--quiet{background:transparent;color:var(--ink-02);border:1px solid var(--line)}
+.btn--quiet:hover{background:var(--stone-02)}
+.btn--plain{background:transparent;color:var(--bronze);min-height:44px;padding:0 6px;font-size:15px}
+.btn--sm{min-height:38px;padding:0 14px;font-size:14px;border-radius:9px}
+.btn--block{display:flex;width:100%}
+.btn svg{width:18px;height:18px;flex:0 0 auto}
+.btn .ld{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* --------------------------------------------------------------- forms --- */
+.field{display:block;margin:0 0 18px}
+.field > .lbl{
+  display:block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--ink-04);margin:0 0 8px;font-weight:600;
+}
+.inp{
+  width:100%;min-height:50px;padding:13px 15px;
+  background:var(--stone-00);border:1px solid var(--line);border-radius:11px;
+  font-size:16px;transition:border-color .16s var(--tap),background .16s var(--tap);
+}
+.inp:focus{outline:none;border-color:var(--bronze);background:#fff}
+.inp::placeholder{color:var(--ink-04)}
+textarea.inp{min-height:84px;resize:vertical;line-height:1.5}
+.field.err .inp{border-color:var(--oxblood)}
+.field .msg{font-size:12.5px;color:var(--oxblood);margin:7px 0 0;display:none}
+.field.err .msg{display:block}
+
+/* code entry: six discrete glyphs */
+.codefield{
+  width:100%;min-height:62px;text-align:center;
+  font-family:var(--display);font-size:30px;letter-spacing:.42em;text-indent:.42em;
+  background:var(--stone-00);border:1px solid var(--line);border-radius:12px;
+}
+.codefield:focus{outline:none;border-color:var(--bronze)}
+
+/* --------------------------------------------------------------- chips --- */
+.chiprow{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chiprow::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;min-height:34px;padding:0 14px;border-radius:999px;
+  display:inline-flex;align-items:center;
+  font-size:13.5px;font-weight:500;color:var(--ink-03);
+  background:transparent;border:1px solid var(--line);
+  transition:background .16s var(--tap),color .16s var(--tap),border-color .16s var(--tap);
+}
+.chip[aria-pressed="true"]{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
+
+/* --------------------------------------------------------------- badge --- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  padding:4px 8px;border-radius:5px;background:var(--stone-02);color:var(--ink-03);
+}
+.badge svg{width:12px;height:12px;flex:0 0 auto;stroke-width:2.4}
+.badge--bronze{background:var(--bronze-wash);color:var(--bronze-lo)}
+.badge--live{background:rgba(74,107,85,.12);color:var(--verd)}
+.badge--ink{background:var(--ink-00);color:var(--stone-01)}
+
+/* ---------------------------------------------------------------- rows --- */
+.rows{display:flex;flex-direction:column}
+.row-item{
+  position:relative;display:flex;gap:14px;align-items:flex-start;
+  width:100%;text-align:left;padding:17px 0;
+  border-bottom:1px solid var(--line-soft);
+  transition:opacity .16s var(--tap);
+}
+.row-item:last-child{border-bottom:0}
+.row-item:active{opacity:.55}
+.row-item .body{flex:1;min-width:0;display:block}
+.row-item .ttl{display:block;font-size:16px;font-weight:600;line-height:1.3;letter-spacing:-.015em}
+.row-item .sub{display:block;font-size:13px;color:var(--ink-04);margin:3px 0 0;letter-spacing:0}
+.row-item .tail{display:block;text-align:right;flex:0 0 auto;padding-top:2px;white-space:nowrap}
+
+/* ------------------------------------------------------------- skeleton --- */
+.sk{background:linear-gradient(90deg,var(--stone-02) 25%,var(--stone-01) 37%,var(--stone-02) 63%);
+  background-size:400% 100%;animation:shimmer 1.4s ease infinite;border-radius:5px}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ---------------------------------------------------------------- misc --- */
+.empty{padding:56px 24px;text-align:center}
+.empty .ic{margin:0 auto 18px;opacity:.3;width:38px;height:38px}
+.empty .ic svg{width:38px;height:38px}
+.empty .t{font-family:var(--display);font-size:19px;margin:0 0 6px}
+.empty .d{font-size:14px;color:var(--ink-04);max-width:30ch;margin:0 auto}
+
+.stagger > *{opacity:0;animation:rise .5s var(--ease) forwards}
+@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+:focus-visible{outline:2px solid var(--bronze);outline-offset:2px;border-radius:4px}

@@ -1,0 +1,9 @@
+agora.db
+agora.db-wal
+agora.db-shm
+_site/
+.deploy/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
