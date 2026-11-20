@@ -17,10 +17,50 @@ PORT="${PORT:-8800}"
 current() { [ -f "$URLFILE" ] && cat "$URLFILE"; }
 
 stop() {
-  pkill -f "cloudflared.*--url" 2>/dev/null && echo "túnel cerrado." || echo "no había túnel."
+  # pkill reports that it signalled something, not that the process died.
+  # Verify, escalate, and only then say it is closed.
+  killed=0
+  if pgrep -f "cloudflared.*--url" >/dev/null 2>&1; then
+    pkill -f "cloudflared.*--url" 2>/dev/null || true
+    i=0
+    while [ $i -lt 15 ] && pgrep -f "cloudflared.*--url" >/dev/null 2>&1; do
+      sleep 0.4; i=$((i+1))
+    done
+    if pgrep -f "cloudflared.*--url" >/dev/null 2>&1; then
+      pkill -9 -f "cloudflared.*--url" 2>/dev/null || true
+      sleep 1
+    fi
+    if pgrep -f "cloudflared.*--url" >/dev/null 2>&1; then
+      echo "No consigo cerrar el túnel. Procesos que siguen vivos:" >&2
+      pgrep -lf "cloudflared.*--url" | sed 's/^/  /' >&2
+      return 1
+    fi
+    killed=1
+  fi
+  [ "$killed" = "1" ] && echo "túnel cerrado." || echo "no había ningún túnel abierto."
   rm -f "$URLFILE"
+
   echo "devolviendo la web al aviso de demo..."
-  ./deploy-site.sh --push >/dev/null && echo "web actualizada."
+  if ! ./deploy-site.sh --push >/dev/null 2>&1; then
+    echo "El despliegue falló: la web puede seguir apuntando al túnel muerto." >&2
+    echo "Reintenta con:  ./deploy-site.sh --push" >&2
+    return 1
+  fi
+
+  # And check what is actually served, not what we just pushed.
+  printf 'comprobando la web publicada '
+  i=0
+  while [ $i -lt 20 ]; do
+    live=$(curl -s -m 10 -L "https://albertogomez249.github.io/$(basename "$(pwd)" | sed 's/.*/agora-segovia/')/config.js" 2>/dev/null | grep -o 'AGORA_APP_BASE = "[^"]*"')
+    case "$live" in
+      'AGORA_APP_BASE = ""') echo "· limpia."; return 0 ;;
+    esac
+    printf '.'; sleep 6; i=$((i+1))
+  done
+  echo ""
+  echo "La web publicada todavía apunta a un túnel cerrado." >&2
+  echo "GitHub Pages tarda un rato; vuelve a mirar en un minuto o lanza ./deploy-site.sh --push" >&2
+  return 1
 }
 
 case "$1" in
