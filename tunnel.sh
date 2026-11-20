@@ -38,7 +38,9 @@ echo "app → ok en el puerto $PORT"
 
 pkill -f "cloudflared.*--url" 2>/dev/null || true
 : > "$LOG"
-nohup "$CF" tunnel --no-autoupdate --url "http://127.0.0.1:$PORT" > "$LOG" 2>&1 &
+# --protocol http2 goes out over 443. The default prefers QUIC on port 7844,
+# which campus and hotel networks often block.
+nohup "$CF" tunnel --no-autoupdate --protocol http2 --url "http://127.0.0.1:$PORT" > "$LOG" 2>&1 &
 echo "levantando el túnel..."
 
 URL=""
