@@ -44,17 +44,41 @@ echo "levantando el túnel..."
 URL=""
 i=0
 while [ $i -lt 60 ]; do
-  URL=$(grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG" 2>/dev/null | head -1)
+  URL=$(grep -a -o 'https://[a-z0-9-]*\.trycloudflare\.com' "$LOG" 2>/dev/null | head -1)
   [ -n "$URL" ] && break
   sleep 1; i=$((i+1))
 done
 [ -n "$URL" ] || { echo "El túnel no dio URL en 60 s. Mira $LOG" >&2; exit 1; }
+case "$URL" in
+  https://*.trycloudflare.com) : ;;
+  *) echo "Lo capturado no es una URL de túnel: $URL" >&2
+     echo "Mira $LOG y dímelo." >&2; exit 1 ;;
+esac
 
 printf '%s' "$URL" > "$URLFILE"
 echo "túnel → $URL"
 
+# cloudflared prints the address before Cloudflare has finished routing it, so
+# wait for it to actually answer. Otherwise the deploy refuses a live tunnel.
+printf 'esperando a que el túnel enrute '
+i=0
+while [ $i -lt 40 ]; do
+  if curl -s -o /dev/null -m 5 -L "$URL" 2>/dev/null; then echo "· listo."; break; fi
+  printf '.'; sleep 2; i=$((i+1))
+done
+if [ $i -ge 40 ]; then
+  echo ""
+  echo "El túnel no llegó a responder. La web se queda como estaba." >&2
+  exit 1
+fi
+
 echo "redesplegando la web para que apunte ahí..."
-APP_BASE="$URL" ./deploy-site.sh --push | sed 's/^/  /'
+if ! APP_BASE="$URL" ./deploy-site.sh --push | sed 's/^/  /'; then
+  echo "" >&2
+  echo "El túnel está vivo en $URL pero la web no se pudo actualizar." >&2
+  echo "Reintenta con:  APP_BASE=$URL ./deploy-site.sh --push" >&2
+  exit 1
+fi
 
 echo ""
 echo "  App pública       $URL/student/"
