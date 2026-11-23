@@ -34,6 +34,10 @@ rm -rf "$OUT"; mkdir -p "$OUT"
 cp -R web/index.html web/en web/es web/negocios web/site.css web/site.js web/config.js web/shared "$OUT"/
 # the apps are not static; they never go to Pages
 rm -rf "$OUT/student" "$OUT/business"
+# The exported deck, when it has been generated: a stable public address that
+# survives the tunnel dying. It says nothing the pages do not already say.
+[ -f Agora_Pitch_Segovia.pdf ] && cp Agora_Pitch_Segovia.pdf "$OUT/"
+
 touch "$OUT/.nojekyll"
 
 # point the site at wherever the backend lives, if anywhere
