@@ -9,3 +9,6 @@ __pycache__/
 .DS_Store
 bin/
 .tunnel-url
+
+# deck exportado: se regenera, no se versiona
+Agora_Pitch_Segovia.pdf
