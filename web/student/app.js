@@ -124,6 +124,14 @@ const proof = (o) => {
   return bits.length ? `<span class="sub" style="display:flex;gap:11px;margin-top:5px">${bits.join('')}</span>` : '';
 };
 
+const demoNote = () => `
+  <div class="guest" style="background:var(--stone-02);color:var(--ink-02)">
+    <div class="t" style="font-size:12.5px;line-height:1.45">
+      <b style="color:var(--oxblood)">Demonstration.</b> These are real Segovia businesses,
+      but the discounts, prices and reviews are invented. Nothing here is an offer.
+    </div>
+  </div>`;
+
 const guestStrip = (what) => ME ? '' : `
   <div class="guest">
     <div class="t">You are just looking. <b>Verify your university email</b> to ${what}.</div>
@@ -145,22 +153,25 @@ async function render() {
 }
 
 /* ----------------------------------------------------------- I · the table */
-const KIND = { table: 'Free table', menu: 'Set menu', star: 'House pick', discount: 'Discount' };
+/* Four kinds that mean the same thing to a roast house, a cinema and a padel
+   court. The time window is an attribute of the offer, not a kind of its own. */
+const KIND = { percent: 'Percent off', fixed: 'Student price', twofor: 'Two for one', bundle: 'Bundle' };
 const ZONE = { centro: 'Old town', nueva: 'Nueva Segovia', sanlo: 'San Lorenzo', zorrilla: 'J. Zorrilla' };
 
 async function shop(v) {
   const f = { kind: PREF.kind || '', zone: PREF.zone || '' };
   const { offers } = await Agora.get('/api/offers', f);
-  const now = offers.filter(o => o.kind === 'table').slice(0, 6);
-  const kinds = [['', 'Everything'], ['table', 'Free tables'], ['menu', 'Set menus'],
-                 ['star', 'House picks'], ['discount', 'Discounts']];
+  const now = offers.filter(o => o.discount_pct >= 40).slice(0, 6);
+  const kinds = [['', 'Everything'], ['percent', 'Percent off'], ['fixed', 'Student price'],
+                 ['twofor', 'Two for one'], ['bundle', 'Bundles']];
   const zones = [['', 'All Segovia'], ...Object.entries(ZONE)];
   v.innerHTML =
     head('I · SHOP·AND·DINE', 'At the table',
       'Prices held for verified students, inside the walls and beyond them.') +
+    demoNote() +
     guestStrip('pay from your phone and keep what you save') +
     (now.length && !f.kind ? `
-      <div class="inscript dim" style="margin:0 0 11px">FREE RIGHT NOW</div>
+      <div class="inscript dim" style="margin:0 0 11px">BIGGEST CUTS TODAY</div>
       <div class="rail">${now.map(o => `
         <button class="railcard" data-o="${o.id}">
           <span class="art">${plate(o.business_name, 'o' + o.id)}
@@ -260,6 +271,7 @@ async function events(v) {
   v.innerHTML =
     head('II · THE·AGENDA', 'This week',
       'Parties, theatre, concerts, matches to watch and sport to play together.') +
+    demoNote() +
     guestStrip('buy a student ticket') +
     (events.length
       ? `<div class="stagger">${events.map((e, i) => `
