@@ -16,8 +16,23 @@ is_agora() { curl -fsS --max-time 2 "http://127.0.0.1:$PORT/api/health" 2>/dev/n
 urls() {
   printf '  Student app    http://localhost:%s/student/\n' "$PORT"
   printf '  House console  http://localhost:%s/business/\n' "$PORT"
+  if [ -n "$AGORA_MODERATORS" ]; then
+    printf '  Moderation     http://localhost:%s/mod/\n' "$PORT"
+  else
+    printf '  Moderation     http://localhost:%s/mod/  (no moderator set — see .moderators)\n' "$PORT"
+  fi
 }
 LOG="${TMPDIR:-/tmp}/agora-$PORT.log"
+
+# Who may moderate reviews. Never committed: this repository is public, and a
+# moderator address is a real person's. Put one address per line, or a single
+# comma-separated line, in .moderators (gitignored), or set AGORA_MODERATORS
+# in the environment. With neither, the moderation console lets nobody in,
+# which is the right failure: an empty list cannot be a backdoor.
+if [ -z "$AGORA_MODERATORS" ] && [ -f .moderators ]; then
+  AGORA_MODERATORS=$(tr '\n' ',' < .moderators | sed 's/,,*/,/g; s/^,//; s/,$//')
+fi
+export AGORA_MODERATORS
 
 stop() {
   pid=$(holder)

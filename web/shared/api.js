@@ -1,9 +1,11 @@
 /* Transport + the handful of helpers both apps share. */
 const Agora = {
-  /* Scoped per app: the two consoles share an origin, so one key would mean
-     signing into the house would sign you out of the student app. You should be
-     able to hold both at once — that is the whole demo. */
-  key: location.pathname.indexOf('/business') === 0 ? 'agora_token_house' : 'agora_token_student',
+  /* Scoped per app: the consoles share an origin, so one key would mean signing
+     into the house would sign you out of the student app. You should be able to
+     hold all three at once — that is the whole demo. */
+  key: location.pathname.indexOf('/business') === 0 ? 'agora_token_house'
+     : location.pathname.indexOf('/mod') === 0 ? 'agora_token_mod'
+     : 'agora_token_student',
   get token() { return localStorage.getItem(this.key); },
   set token(v) { v ? localStorage.setItem(this.key, v) : localStorage.removeItem(this.key); },
 

@@ -12,3 +12,6 @@ bin/
 
 # deck exportado: se regenera, no se versiona
 Agora_Pitch_Segovia.pdf
+
+# lista de moderadores: direcciones reales, no van al repo
+.moderators

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#15181C">
+<meta name="robots" content="noindex,nofollow">
+<title>Ágora · moderation</title>
+<link rel="stylesheet" href="/shared/theme.css">
+<style>
+  /* A tool, not a shopfront. Wide, plain, fast to read down: the job is to
+     judge sixty reviews without losing your place. */
+  body{background:var(--stone-01);min-height:100vh}
+  .shell{max-width:980px;margin:0 auto;padding:0 22px 90px}
+
+  header.bar{
+    background:var(--ink-00);color:var(--stone-00);padding:16px 0;margin:0 0 30px;
+    position:sticky;top:0;z-index:20;
+  }
+  header.bar .in{max-width:980px;margin:0 auto;padding:0 22px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px}
+  header.bar .mark{font-family:var(--display);font-size:16px;letter-spacing:.28em;padding-left:.28em}
+  header.bar .who{font-size:13px;color:#9AA5B1}
+  header.bar .who b{color:var(--bronze-hi);font-weight:600}
+
+  .counts{display:flex;gap:9px;flex-wrap:wrap;margin:0 0 22px}
+  .counts button{
+    display:flex;align-items:baseline;gap:7px;border:1px solid var(--line);border-radius:10px;
+    background:var(--stone-00);padding:10px 15px;transition:border-color .15s var(--tap);
+  }
+  .counts button[aria-pressed="true"]{border-color:var(--ink-00);background:var(--ink-00);color:var(--stone-00)}
+  .counts button .n{font-family:var(--display);font-size:21px;line-height:1}
+  .counts button .k{font-size:12px;letter-spacing:.04em;opacity:.78}
+
+  .rv{
+    border:1px solid var(--line);border-radius:13px;background:var(--stone-00);
+    padding:18px 20px;margin:0 0 13px;
+  }
+  .rv .top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+  .rv .venue{font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .rv .meta{font-size:12.5px;color:var(--ink-04);margin:5px 0 0;line-height:1.5}
+  .rv .stars{font-size:15px;color:var(--bronze);letter-spacing:.1em;flex:0 0 auto}
+  .rv .body{font-size:15px;line-height:1.6;color:var(--ink-01);margin:13px 0 0;
+    padding:13px 15px;background:var(--stone-01);border-radius:9px;white-space:pre-wrap}
+  .rv .acts{display:flex;gap:9px;margin:15px 0 0;flex-wrap:wrap}
+  .rv .acts .btn{flex:0 0 auto}
+  .rv.gone{opacity:.42}
+  .rv .verdict{font-size:12.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+  .rv .verdict.pub{color:var(--verd)}
+  .rv .verdict.rej{color:var(--oxblood)}
+
+  .note{font-size:13px;color:var(--ink-04);line-height:1.6;margin:26px 0 0;
+    border-top:1px solid var(--line);padding:18px 0 0}
+
+  /* ---- the gate ---- */
+  #gate{max-width:430px;margin:8vh auto 0;padding:0 24px}
+  #gate .wm{font-family:var(--display);font-size:46px;letter-spacing:.17em;padding-left:.17em;line-height:1}
+  #gate .tag{color:var(--ink-04);font-size:14.5px;line-height:1.6;margin:16px 0 30px}
+  #gate .note2{font-size:12.5px;color:var(--ink-04);line-height:1.6;margin:18px 0 0}
+  .sent{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 18px;
+    font-size:13.5px;color:var(--ink-03);line-height:1.55;background:var(--stone-00)}
+  .sent .big{font-family:var(--display);font-size:22px;letter-spacing:.22em;color:var(--bronze);
+    display:block;margin:7px 0 0}
+
+  #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:70;
+    background:var(--ink-00);color:var(--stone-00);padding:12px 18px;border-radius:12px;
+    font-size:14px;max-width:88%;opacity:0;pointer-events:none;
+    transition:opacity .2s var(--ease),transform .2s var(--ease);
+    box-shadow:0 12px 34px rgba(21,24,28,.3)}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<header class="bar hide" id="bar">
+  <div class="in">
+    <span class="mark">ÁGORA · MODERATION</span>
+    <span class="who" id="who"></span>
+  </div>
+</header>
+
+<main class="shell"><div id="view"></div></main>
+
+<section id="gate">
+  <div class="wm">ÁGORA</div>
+  <p class="tag">Review moderation. Every student review passes through here
+    before anyone else sees it.</p>
+  <div id="gate1">
+    <label class="field"><span class="lbl">Moderator email</span>
+      <input class="inp" id="email" type="email" inputmode="email" autocomplete="email"
+             autocapitalize="off" spellcheck="false" placeholder="you@example.com">
+      <span class="msg" id="emailMsg"></span>
+    </label>
+    <button class="btn btn--bronze btn--block" id="send">Continue</button>
+    <p class="note2">Only addresses on the moderator list may enter. That list is set
+      on the server, not here, and a venue is never on it: a business that can bury
+      its own bad reviews is running a marketing page, not a review system.</p>
+  </div>
+  <div id="gate2" class="hide">
+    <div class="sent" id="sent"></div>
+    <label class="field"><span class="lbl">Six digits</span>
+      <input class="codefield" id="code" inputmode="numeric" maxlength="6" placeholder="······">
+      <span class="msg" id="codeMsg"></span>
+    </label>
+    <button class="btn btn--bronze btn--block" id="verify">Enter</button>
+    <button class="btn btn--plain btn--block" id="again" style="margin-top:6px">Use another address</button>
+  </div>
+</section>
+
+<div id="toast"></div>
+<script src="/shared/icons.js"></script>
+<script src="/shared/api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
