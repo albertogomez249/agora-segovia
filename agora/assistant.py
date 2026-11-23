@@ -58,24 +58,25 @@ def profile_copy(name, category, zone, highlight):
 
 def offer_copy(kind, name, category, item, pct, window):
     c = CATEGORIES.get(category, CATEGORIES["restaurant"])
-    item = (item or "").strip() or {"star": "our best seller", "menu": "student menu",
-                                    "table": "a free table", "discount": "your order"}[kind]
-    if kind == "star":
+    item = (item or "").strip() or {"fixed": "the set lunch", "bundle": "the full package",
+                                    "twofor": "two tickets", "percent": "your order"}.get(
+                                        kind, "your order")
+    if kind == "bundle":
         return {"title_en": "%s - %d%% for students" % (item.title(), pct),
                 "title_es": "%s - %d%% para estudiantes" % (item.title(), pct),
-                "detail_en": "Our star product at a student price. Show your verified pass and pay in the app.",
-                "detail_es": "Nuestro producto estrella a precio de estudiante. Ensena tu pase verificado y paga en la app."}
-    if kind == "menu":
+                "detail_en": "Everything in one price for students. Show your verified pass and pay in the app.",
+                "detail_es": "Todo en un precio para estudiantes. Ensena tu pase verificado y paga en la app."}
+    if kind == "fixed":
         return {"title_en": "Student menu - %s" % item.title(),
                 "title_es": "Menu estudiante - %s" % item.title(),
                 "detail_en": "A full menu priced for students, every day. No coupon, no printout.",
                 "detail_es": "Un menu completo a precio de estudiante, todos los dias. Sin cupon ni papeles."}
-    if kind == "table":
+    if kind == "twofor":
         w = window or c["table_slots"] or "Mon-Wed 18:00-20:00"
-        return {"title_en": "Empty table - %d%% off, %s" % (pct, w),
-                "title_es": "Mesa libre - %d%% de descuento, %s" % (pct, w),
-                "detail_en": "Quiet hours at %s. Limited seats, first come first served." % name,
-                "detail_es": "Horas tranquilas en %s. Plazas limitadas, por orden de llegada." % name}
+        return {"title_en": "Two for one, %s" % w,
+                "title_es": "Dos por uno, %s" % w,
+                "detail_en": "Two for the price of one at %s. Limited places, first come first served." % name,
+                "detail_es": "Dos al precio de uno en %s. Plazas limitadas, por orden de llegada." % name}
     return {"title_en": "%d%% off for students" % pct,
             "title_es": "%d%% de descuento para estudiantes" % pct,
             "detail_en": "Valid with a verified university email.",

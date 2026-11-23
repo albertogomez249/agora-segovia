@@ -9,6 +9,43 @@ const ICON = (() => {
       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra || ''}>${d}</svg>`;
 
   return {
+
+    /* Phase-1 leisure categories. A Roman vocabulary where one exists —
+       the comic-and-tragic masks for the theatre, a laurel ball for the
+       circus — and a plain legible mark where it does not. */
+    ball: w(`
+      <circle cx="12" cy="12" r="8.4"/>
+      <path d="M12 3.6v3.1M12 17.3v3.1M3.6 12h3.1M17.3 12h3.1"/>
+      <path d="M12 8.4 15.4 11l-1.3 4h-4.2L8.6 11z"/>`),
+
+    mask: w(`
+      <path d="M3.4 5.4h7.2v6.9a3.6 3.6 0 0 1-7.2 0z"/>
+      <path d="M5.3 8.1h.01M8.7 8.1h.01"/>
+      <path d="M13.4 5.4h7.2v6.9a3.6 3.6 0 0 1-7.2 0z"/>
+      <path d="M15.3 8.1h.01M18.7 8.1h.01"/>
+      <path d="M7 19.1c1.6 1.2 8.4 1.2 10 0"/>`),
+
+    screen: w(`
+      <rect x="3.4" y="4.6" width="17.2" height="11.2" rx="1.4"/>
+      <path d="M7.2 19.4h9.6M12 15.8v3.6"/>
+      <path d="M8.4 7.8h7.2M8.4 10.6h4.6"/>`),
+
+    racket: w(`
+      <ellipse cx="14.2" cy="9.1" rx="5.2" ry="6"/>
+      <path d="M11.3 13.8 5.6 19.5"/>
+      <path d="M4.2 20.9 6.9 18.2"/>
+      <path d="M10.6 6.1v6M14.2 4.4v9.4M17.8 6.1v6"/>
+      <path d="M9.6 7.6h9.2M9.6 10.6h9.2"/>`),
+
+    pin: w(`
+      <path d="M12 21.2s6.4-6.1 6.4-10.4A6.4 6.4 0 0 0 5.6 10.8C5.6 15.1 12 21.2 12 21.2z"/>
+      <circle cx="12" cy="10.6" r="2.5"/>`),
+
+    map: w(`
+      <path d="M3.4 6.6 9 4.6v12.8l-5.6 2z"/>
+      <path d="M9 4.6l6 2v12.8l-6-2z"/>
+      <path d="M15 6.6l5.6-2v12.8l-5.6 2z"/>`),
+
     amphora: w(`
       <path d="M9.9 3.6h4.2v2.6c0 .7.4 1.1 1 1.6 1.9 1.5 3 3.5 3 5.7 0 3.4-2.7 5.8-6.1 5.8S6 17 6 13.5c0-2.2 1.1-4.2 3-5.7.6-.5 1-.9 1-1.6V3.6z"/>
       <path d="M9.4 6.6C7.3 7 6.1 8.3 6.1 9.7"/>

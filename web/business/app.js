@@ -272,9 +272,14 @@ function formShell(title, note, inner, cta) {
 
 function fOffer() {
   formShell('New offer', 'It appears in the student app the moment you save.', `
-    <label class="field"><span class="lbl">Kind</span><select class="inp" id="kind">
-      <option value="discount">Discount</option><option value="menu">Set menu</option>
-      <option value="star">House pick</option><option value="table">Free table</option></select></label>
+    <label class="field"><span class="lbl">Category</span><select class="inp" id="leisure">
+      <option value="restaurants">Restaurants</option><option value="products">Products</option>
+      <option value="club">Clubbing</option><option value="football">Football</option>
+      <option value="theatre">Theatre</option><option value="cinema">Cinema</option>
+      <option value="play">Play together</option></select></label>
+    <label class="field"><span class="lbl">Shape of the discount</span><select class="inp" id="kind">
+      <option value="percent">Percent off</option><option value="fixed">Student price</option>
+      <option value="twofor">Two for one</option><option value="bundle">Bundle</option></select></label>
     ${F('t_en', 'Title · English', 'Set menu, starter and main')}
     ${F('t_es', 'Title · Español', 'Menú del día, primero y segundo')}
     ${F('list', 'Normal price (€)', '14', 'decimal')}
@@ -284,7 +289,8 @@ function fOffer() {
   $('#save').onclick = async e => {
     busy(e.currentTarget, true, 'Publishing');
     try {
-      await Agora.post('/api/biz/offers', { kind: $('#kind').value, title_en: $('#t_en').value,
+      await Agora.post('/api/biz/offers', { kind: $('#kind').value,
+        leisure: $('#leisure').value, title_en: $('#t_en').value,
         title_es: $('#t_es').value, list_eur: $('#list').value, student_eur: $('#stu').value,
         stock: $('#stock').value || 0, window_label: $('#win').value });
       toast('Live in the student app'); render();

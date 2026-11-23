@@ -1,6 +1,6 @@
 """JSON API for the Agora student app and business console."""
 import json, time, re
-from . import db, assistant
+from . import db, assistant, leisure
 
 COMMISSION_PCT = 8.0
 EVENT_FEE_CENTS = 120          # per ticket sold
@@ -65,6 +65,8 @@ def decorate_offer(o):
     o["saved_eur"] = money(o["list_cents"] - o["student_cents"])
     o["discount_pct"] = int(round(100 - (o["student_cents"] * 100.0 / max(o["list_cents"], 1))))
     o["left"] = max(o["stock"] - o["claimed"], 0) if o["stock"] else None
+    o["leisure_en"] = leisure.LABEL_EN.get(o.get("leisure"), "")
+    o["leisure_es"] = leisure.LABEL_ES.get(o.get("leisure"), "")
     return o
 
 
@@ -75,6 +77,8 @@ def decorate_event(e):
     e["saved_eur"] = money(e["list_cents"] - e["student_cents"])
     e["left"] = max(e["capacity"] - e["sold"], 0)
     e["when"] = time.strftime("%a %d %b, %H:%M", time.localtime(e["starts_at"]))
+    e["leisure_en"] = leisure.LABEL_EN.get(e.get("leisure"), "")
+    e["leisure_es"] = leisure.LABEL_ES.get(e.get("leisure"), "")
     return e
 
 
@@ -202,13 +206,18 @@ def list_offers(ctx, body):
         where.append("b.zone=?"); args.append(body["zone"])
     if body.get("kind"):
         where.append("o.kind=?"); args.append(body["kind"])
+    # Phase 1's primary filter: what you are buying, not the shape of the cut.
+    leis = leisure.valid(body.get("leisure", ""))
+    if leis:
+        where.append("o.leisure=?"); args.append(leis)
     if body.get("q"):
         where.append("(o.title_en LIKE ? OR o.title_es LIKE ? OR b.name LIKE ?)")
         args += ["%%%s%%" % body["q"]] * 3
     rows = db.q(
-        "SELECT o.*, b.name AS business_name, b.zone, b.category, b.address "
+        "SELECT o.*, b.name AS business_name, b.zone, b.category, b.address, "
+        "b.lat, b.lng, b.real_name "
         "FROM offers o JOIN businesses b ON b.id=o.business_id "
-        "WHERE %s ORDER BY (o.kind='table') DESC, o.created_at DESC" % " AND ".join(where), args)
+        "WHERE %s ORDER BY o.created_at DESC" % " AND ".join(where), args)
     return {"offers": [decorate_offer(o) for o in rows]}
 
 
@@ -216,10 +225,128 @@ def list_events(ctx, body):
     where, args = ["e.active=1"], []
     if body.get("category"):
         where.append("e.category=?"); args.append(body["category"])
-    rows = db.q("SELECT e.*, b.name AS business_name, b.zone FROM events e "
+    leis = leisure.valid(body.get("leisure", ""))
+    if leis:
+        where.append("e.leisure=?"); args.append(leis)
+    rows = db.q("SELECT e.*, b.name AS business_name, b.zone, b.address, "
+                "b.lat, b.lng, b.real_name FROM events e "
                 "JOIN businesses b ON b.id=e.business_id WHERE %s "
                 "ORDER BY e.featured DESC, e.starts_at ASC" % " AND ".join(where), args)
     return {"events": [decorate_event(e) for e in rows]}
+
+
+MIN_COHORT = 5
+"""Below five people a "what your degree is doing" count stops being a trend and
+starts being a description of named individuals. A degree-year group on either
+Segovia campus can be a dozen people, so the threshold is enforced here, in the
+query layer, and not left to the interface to remember."""
+
+
+def university(ctx, body):
+    """What students at a university — optionally at one degree — actually buy.
+
+    Aggregate only. Never a list of people, never a count below MIN_COHORT.
+    """
+    unis = db.q("SELECT university AS name, COUNT(*) AS students FROM students "
+                "WHERE verified=1 GROUP BY university ORDER BY students DESC")
+    uni = body.get("university") or (unis[0]["name"] if unis else "")
+
+    degrees = db.q("SELECT degree, COUNT(*) AS students FROM students "
+                   "WHERE verified=1 AND university=? AND degree<>'' "
+                   "GROUP BY degree ORDER BY students DESC", (uni,))
+    for d in degrees:
+        d["enough"] = d["students"] >= MIN_COHORT
+
+    degree = body.get("degree") or ""
+    # A degree too small to aggregate is not selectable, whatever was asked for.
+    if degree and not any(d["degree"] == degree and d["enough"] for d in degrees):
+        degree = ""
+
+    where = ["s.verified=1", "s.university=?"]
+    args = [uni]
+    if degree:
+        where.append("s.degree=?"); args.append(degree)
+    cond = " AND ".join(where)
+
+    size = db.q("SELECT COUNT(*) AS n FROM students s WHERE " + cond, args, one=True)["n"]
+    if size < MIN_COHORT:
+        return {"universities": unis, "university": uni, "degrees": degrees,
+                "degree": degree, "cohort": size, "enough": False,
+                "min_cohort": MIN_COHORT, "popular": [], "reviews": []}
+
+    popular = db.q(
+        "SELECT b.name, b.id AS business_id, b.lat, b.lng, b.zone, "
+        "COUNT(*) AS buys, COUNT(DISTINCT t.student_id) AS people, "
+        "SUM(t.saved_cents) AS saved_cents "
+        "FROM transactions t JOIN students s ON s.id=t.student_id "
+        "JOIN businesses b ON b.id=t.business_id "
+        "WHERE " + cond + " GROUP BY b.id "
+        "HAVING COUNT(DISTINCT t.student_id) >= ? "
+        "ORDER BY buys DESC, people DESC LIMIT 8", args + [2])
+    for r in popular:
+        r["saved_eur"] = money(r["saved_cents"] or 0)
+
+    reviews = db.q(
+        "SELECT r.rating, r.body, r.created_at, b.name AS business_name, "
+        "s.degree, s.year "
+        "FROM reviews r JOIN students s ON s.id=r.student_id "
+        "JOIN businesses b ON b.id=r.business_id "
+        "WHERE r.status='published' AND " + cond + " "
+        "ORDER BY r.created_at DESC LIMIT 10", args)
+
+    return {"universities": unis, "university": uni, "degrees": degrees,
+            "degree": degree, "cohort": size, "enough": True,
+            "min_cohort": MIN_COHORT, "popular": popular, "reviews": reviews}
+
+
+def map_pins(ctx, body):
+    """One pin per venue, with the cheapest thing on offer there right now.
+
+    The map is the front door in phase 1, so it must answer the question a
+    student actually has standing in the street: what is near me, in what
+    category, and from how much. A venue with no live offer and no live event
+    is not a pin — an empty pin is worse than no pin.
+    """
+    leis = leisure.valid(body.get("leisure", ""))
+    pins = []
+    for b in db.q("SELECT id,name,category,zone,address,lat,lng,real_name "
+                  "FROM businesses WHERE lat IS NOT NULL AND lng IS NOT NULL"):
+        oargs = [b["id"]]
+        osql = "SELECT leisure,student_cents,list_cents,title_en,title_es FROM offers " \
+               "WHERE active=1 AND business_id=?"
+        if leis:
+            osql += " AND leisure=?"; oargs.append(leis)
+        offers = db.q(osql + " ORDER BY student_cents ASC", oargs)
+
+        eargs = [b["id"], db.now()]
+        esql = "SELECT leisure,student_cents,list_cents,title_en,title_es,starts_at FROM events " \
+               "WHERE active=1 AND business_id=? AND starts_at>=?"
+        if leis:
+            esql += " AND leisure=?"; eargs.append(leis)
+        events = db.q(esql + " ORDER BY starts_at ASC", eargs)
+
+        if not offers and not events:
+            continue
+        cheapest = min([o["student_cents"] for o in offers] +
+                       [e["student_cents"] for e in events])
+        # The pin's own category: whatever the cheapest live thing is, so the
+        # colour on the map matches the price written under it.
+        kinds = [(o["student_cents"], o["leisure"]) for o in offers] + \
+                [(e["student_cents"], e["leisure"]) for e in events]
+        kinds.sort()
+        pins.append({
+            "business_id": b["id"], "name": b["name"], "zone": b["zone"],
+            "address": b["address"], "lat": b["lat"], "lng": b["lng"],
+            "real_name": bool(b["real_name"]),
+            "leisure": kinds[0][1],
+            "leisure_en": leisure.LABEL_EN.get(kinds[0][1], ""),
+            "leisure_es": leisure.LABEL_ES.get(kinds[0][1], ""),
+            "offers": len(offers), "events": len(events),
+            "from_eur": money(cheapest),
+        })
+    pins.sort(key=lambda p: (p["leisure"], p["name"]))
+    return {"pins": pins, "categories": leisure.as_json(),
+            "centre": {"lat": 40.9481, "lng": -4.1184}}
 
 
 def list_jobs(ctx, body):
@@ -468,10 +595,21 @@ def biz_create_offer(ctx, body):
         raise ApiError("Give both prices in euros")
     if sc >= lc:
         raise ApiError("The student price has to be lower than the normal price")
-    kind = body.get("kind") or "discount"
-    db.run("INSERT INTO offers(business_id,kind,title_en,title_es,detail_en,detail_es,list_cents,"
-           "student_cents,stock,window_label,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,1,?)",
-           (sub["id"], kind, body.get("title_en") or "Student offer",
+    kind = body.get("kind") or "percent"
+    if kind not in ("percent", "fixed", "twofor", "bundle"):
+        raise ApiError("Unknown kind of offer")
+    # Without a leisure category an offer is invisible: it cannot be filtered
+    # and it never reaches the map. Fall back to the venue's own nature rather
+    # than storing a blank.
+    leis = leisure.valid(body.get("leisure", ""))
+    if not leis:
+        biz = db.q("SELECT category FROM businesses WHERE id=?", (sub["id"],), one=True)
+        leis = {"restaurant": "restaurants", "shop": "products", "culture": "theatre",
+                "sport": "play", "nightlife": "club"}.get(
+                    (biz or {}).get("category"), "products")
+    db.run("INSERT INTO offers(business_id,kind,leisure,title_en,title_es,detail_en,detail_es,list_cents,"
+           "student_cents,stock,window_label,active,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,1,?)",
+           (sub["id"], kind, leis, body.get("title_en") or "Student offer",
             body.get("title_es") or "Oferta estudiante", body.get("detail_en") or "",
             body.get("detail_es") or "", lc, sc, int(body.get("stock") or 0),
             body.get("window_label") or "", db.now()))
@@ -773,6 +911,8 @@ ROUTES = {
     ("POST", "/api/auth/logout"): logout,
     ("GET",  "/api/me"): me,
     ("GET",  "/api/offers"): list_offers,
+    ("GET",  "/api/map"): map_pins,
+    ("GET",  "/api/university"): university,
     ("GET",  "/api/events"): list_events,
     ("GET",  "/api/jobs"): list_jobs,
     ("POST", "/api/offers/claim"): claim_offer,

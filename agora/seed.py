@@ -9,7 +9,9 @@ is shown. `real_name=1` marks the rows this applies to.
 Coordinates are approximate, good enough to place a pin on the right street.
 """
 import json, random
-from . import db
+from . import db, leisure
+
+COMMISSION_FOR_SEED = 8.0   # mirrors api.COMMISSION_PCT without importing it
 
 DEMO_NOTICE_ES = ("Negocios reales de Segovia. Los descuentos, precios y reseñas "
                   "son ficticios: esto es una demostración, no una oferta.")
@@ -63,6 +65,20 @@ VENUES = [
      "Pistas cubiertas de pádel, con alquiler de pala incluido.",
      "Indoor padel courts, racket hire included.",
      ["pádel", "deporte", "pistas"]),
+    # Football. Gimnástica Segoviana CF plays at the Estadio de La Albuera, on
+    # the east side of the city (source: espanaestadios.com, Wikipedia).
+    ("taquilla@gimnasticasegoviana.com", "Gimnástica Segoviana CF", "sport", "nueva",
+     "Estadio de La Albuera", 40.9440, -4.1065,
+     "El club de la ciudad desde 1928, en La Albuera, al este de Segovia.",
+     "The city's club since 1928, at La Albuera on the east side of Segovia.",
+     ["fútbol", "liga", "estadio"]),
+    # Clubbing. Listed as a discoteca by the Castilla y León tourism portal,
+    # Calle Juan de Borbón y Battenberg 47. Coordinates approximate.
+    ("sala@zibasegovia.es", "Zibá", "nightlife", "zorrilla",
+     "Calle Juan de Borbón y Battenberg 47", 40.9405, -4.1125,
+     "Sala de noche fuera del casco, con sesiones de fin de semana.",
+     "Night venue outside the old town, with weekend sessions.",
+     ["noche", "sala", "música"]),
     ("hola@lacasadelsiglo.es", "La Casa del Siglo XV", "restaurant", "sanlo",
      "Calle Escuderos 1", 40.9513, -4.1262,
      "Comedor en una casa del XV, menú del día en el casco.",
@@ -70,52 +86,63 @@ VENUES = [
      ["menú", "tradicional"]),
 ]
 
-# venue index, kind, title es/en, detail, list price, student price, stock, window
+# venue index, leisure category, kind, title es/en, detail, list, student, stock, window
 OFFERS = [
-    (0, "fixed", "Cochinillo para dos, precio estudiante", "Suckling pig for two, student price",
+    (0, "restaurants", "fixed", "Cochinillo para dos, precio estudiante", "Suckling pig for two, student price",
      "Medio cochinillo para compartir. Reserva por la app.",
      "Half a suckling pig to share. Book through the app.", 6400, 4800, 8, "Lun–Jue"),
-    (1, "percent", "20% en la carta", "20% off the menu",
+    (1, "restaurants", "percent", "20% en la carta", "20% off the menu",
      "Válido en comidas de lunes a jueves.", "Valid for lunch, Monday to Thursday.",
      2800, 2240, 0, "Lun–Jue mediodía"),
-    (2, "fixed", "Menú estudiante", "Student set menu",
+    (2, "restaurants", "fixed", "Menú estudiante", "Student set menu",
      "Primero, segundo, postre y bebida.", "Starter, main, dessert and a drink.",
      1900, 1250, 0, "Lun–Vie"),
-    (3, "percent", "25% en ponche y bollería", "25% off ponche and pastries",
+    (3, "products", "percent", "25% en ponche y bollería", "25% off ponche and pastries",
      "Para llevar o para la mesa.", "To take away or to sit in.", 600, 450, 0, ""),
-    (4, "fixed", "Butaca estudiante", "Student seat",
+    (4, "theatre", "fixed", "Butaca estudiante", "Student seat",
      "Bloque de butacas reservado en cada función.", "A block of seats held at every performance.",
      2200, 900, 30, "Toda la programación"),
-    (5, "twofor", "2x1 de martes a jueves", "2-for-1, Tuesday to Thursday",
+    (5, "cinema", "twofor", "2x1 de martes a jueves", "2-for-1, Tuesday to Thursday",
      "Dos entradas al precio de una.", "Two tickets for the price of one.", 1700, 850, 40, "Mar–Jue"),
-    (6, "percent", "15% en comercios adheridos", "15% in participating shops",
+    (6, "products", "percent", "15% en comercios adheridos", "15% in participating shops",
      "Enseña el pase en caja.", "Show your pass at the till.", 3000, 2550, 0, ""),
-    (7, "fixed", "Entrada estudiante al Alcázar", "Student entry to the Alcázar",
+    (7, "products", "fixed", "Entrada estudiante al Alcázar", "Student entry to the Alcázar",
      "Incluye palacio y Torre de Juan II.", "Palace and the Tower of John II included.",
      900, 500, 0, ""),
-    (8, "bundle", "Pista + palas, 90 minutos", "Court + rackets, 90 minutes",
+    (8, "play", "bundle", "Pista + palas, 90 minutos", "Court + rackets, 90 minutes",
      "Pista cubierta para cuatro, palas incluidas.", "Indoor court for four, rackets included.",
      2400, 1600, 12, "Lun–Jue 16:00–19:00"),
-    (9, "fixed", "Menú del día", "Set lunch",
+    (9, "football", "fixed", "Entrada de fondo, precio estudiante", "Terrace ticket, student price",
+     "Fondo sur en los partidos de liga en casa.", "South terrace for home league games.",
+     1500, 700, 120, "Partidos en casa"),
+    (10, "club", "bundle", "Entrada + dos consumiciones", "Entry + two drinks",
+     "Viernes y sábado, antes de la una.", "Friday and Saturday, before one in the morning.",
+     1800, 1000, 60, "Vie–Sáb antes de 01:00"),
+    (11, "restaurants", "fixed", "Menú del día", "Set lunch",
      "Menú completo en el casco histórico.", "Full set lunch in the old town.", 1800, 1200, 0, "Lun–Vie"),
 ]
 
-# venue, category, title es/en, detail, in days, list, student, capacity, featured
+# venue, leisure category, legacy category, title es/en, detail, in days, list, student, capacity, featured
 EVENTS = [
-    (4, "theatre", "La vida es sueño", "La vida es sueño",
+    (4, "theatre", "theatre", "La vida es sueño", "La vida es sueño",
      "Calderón en el Juan Bravo, con sobretítulos en inglés.",
      "Calderón at the Juan Bravo, with English surtitles.", 4, 2200, 900, 60, 1),
-    (5, "cinema", "Estreno de los jueves", "Thursday premiere",
+    (9, "football", "sport_watch", "Gimnástica Segoviana – jornada en casa", "Gimnástica Segoviana – home game",
+     "Partido de liga en La Albuera, fondo sur para estudiantes.",
+     "League game at La Albuera, south terrace for students.", 2, 1500, 700, 120, 1),
+    (10, "club", "party", "Jueves estudiante", "Student Thursday",
+     "Sesión de estudiantes con dos consumiciones.", "Student session with two drinks included.",
+     3, 1800, 1000, 90, 1),
+    (5, "cinema", "cinema", "Estreno de los jueves", "Thursday premiere",
      "Sesión de estreno con precio de estudiante.", "Premiere screening at a student price.",
-     3, 900, 550, 80, 1),
-    (8, "sport_play", "Torneo abierto de pádel", "Open padel tournament",
+     3, 900, 550, 80, 0),
+    (8, "play", "sport_play", "Torneo abierto de pádel", "Open padel tournament",
      "Parejas, tres rondas, pala incluida.", "Pairs, three rounds, racket included.", 6, 1600, 900, 24, 0),
-    (0, "party", "Noche estudiante junto al acueducto", "Student night by the aqueduct",
-     "Dos consumiciones y música hasta tarde.", "Two drinks and music until late.", 2, 1200, 600, 90, 0),
-    (7, "tour", "Visita nocturna al Alcázar", "Alcázar by night",
+    (7, "products", "tour", "Visita nocturna al Alcázar", "Alcázar by night",
      "Recorrido guiado de noventa minutos.", "A ninety-minute guided walk.", 5, 1500, 700, 35, 0),
 ]
 
+# The five who have reviews written against them by index, kept first and stable.
 STUDENTS = [
     ("marta.ruiz@student.ie.edu", "Marta Ruiz", "es", "Business Administration", 2),
     ("liam.oconnor@student.ie.edu", "Liam O'Connor", "en", "International Relations", 1),
@@ -123,6 +150,29 @@ STUDENTS = [
     ("noah.becker@student.ie.edu", "Noah Becker", "en", "Business Administration", 2),
     ("lucia.perez@uva.es", "Lucía Pérez", "es", "Ingeniería Informática", 1),
 ]
+
+# A cohort big enough for "my university" to mean something. Degrees are the
+# real ones taught on the two Segovia campuses. Sizes are deliberately uneven:
+# some degrees clear the five-person privacy threshold and some do not, which
+# is the behaviour the screen has to demonstrate.
+COHORT = [
+    # degree, university domain, how many, years
+    ("Business Administration",      "student.ie.edu", 9, (1, 2, 3, 4)),
+    ("International Relations",      "student.ie.edu", 7, (1, 2, 3)),
+    ("Data & Business Analytics",    "student.ie.edu", 6, (1, 2, 3)),
+    ("Design",                       "student.ie.edu", 3, (1, 2)),
+    ("Publicidad y RRPP",            "uva.es",         8, (1, 2, 3, 4)),
+    ("Comunicación Audiovisual",     "uva.es",         6, (1, 2, 3)),
+    ("Ingeniería Informática",       "uva.es",         5, (1, 2, 3, 4)),
+    ("Turismo",                      "uva.es",         2, (2, 3)),
+]
+
+FIRST = ["Marta", "Lucía", "Sofía", "Paula", "Elena", "Carmen", "Ana", "Irene", "Clara",
+         "Pablo", "Javier", "Diego", "Álvaro", "Hugo", "Mario", "Sergio", "Adrián",
+         "Liam", "Noah", "Emma", "Olivia", "Luca", "Mateo", "Chloe", "Yusuf", "Ravi"]
+LAST = ["Ruiz", "Pérez", "Martín", "Gómez", "Sanz", "Herrero", "Arribas", "De Pablos",
+        "Llorente", "Bravo", "Tejedor", "Olmos", "Becker", "O'Connor", "Rossi",
+        "Dubois", "Novak", "Khan", "Silva", "Andersen"]
 
 # venue, student, rating, body, status
 REVIEWS = [
@@ -164,17 +214,19 @@ def run():
             (email, name, cat, zone, addr, den, des, json.dumps(tags), lat, lng, now)))
         db.run("INSERT OR IGNORE INTO assistant_state(business_id) VALUES(?)", (bids[-1],))
 
-    for bi, kind, tes, ten, des, den, lc, sc, stock, win in OFFERS:
-        db.run("INSERT INTO offers(business_id,kind,title_en,title_es,detail_en,detail_es,"
+    for bi, leis, kind, tes, ten, des, den, lc, sc, stock, win in OFFERS:
+        assert leis in leisure.KEYS, "categoría de ocio desconocida: %s" % leis
+        db.run("INSERT INTO offers(business_id,leisure,kind,title_en,title_es,detail_en,detail_es,"
                "list_cents,student_cents,stock,claimed,window_label,active,created_at) "
-               "VALUES(?,?,?,?,?,?,?,?,?,0,?,1,?)",
-               (bids[bi], kind, ten, tes, den, des, lc, sc, stock, win, now))
+               "VALUES(?,?,?,?,?,?,?,?,?,?,0,?,1,?)",
+               (bids[bi], leis, kind, ten, tes, den, des, lc, sc, stock, win, now))
 
-    for bi, cat, tes, ten, des, den, days, lc, sc, cap, feat in EVENTS:
-        db.run("INSERT INTO events(business_id,category,title_en,title_es,detail_en,detail_es,"
+    for bi, leis, cat, tes, ten, des, den, days, lc, sc, cap, feat in EVENTS:
+        assert leis in leisure.KEYS, "categoría de ocio desconocida: %s" % leis
+        db.run("INSERT INTO events(business_id,leisure,category,title_en,title_es,detail_en,detail_es,"
                "starts_at,venue,list_cents,student_cents,capacity,sold,featured,active,created_at) "
-               "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)",
-               (bids[bi], cat, ten, tes, den, des, _evening(now + days * 86400),
+               "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)",
+               (bids[bi], leis, cat, ten, tes, den, des, _evening(now + days * 86400),
                 VENUES[bi][1], lc, sc, cap, random.randint(3, max(4, cap // 4)), feat, now))
 
     sids = []
@@ -185,12 +237,58 @@ def run():
             "wallet_cents,saved_cents,created_at,invite_code) VALUES(?,?,?,1,?,?,?,?,0,?,?)",
             (email, name, uni, loc, degree, year, 4000, now, db.invite_for(name))))
 
+    # --- the wider cohort, generated from COHORT with a fixed seed
+    rnd = random.Random(1928)   # the year the Gimnástica was founded; any fixed seed
+    used = {e for e, *_ in STUDENTS}
+    for degree, dom, count, years in COHORT:
+        for _ in range(count):
+            for _try in range(40):
+                fn, ln = rnd.choice(FIRST), rnd.choice(LAST)
+                slug = (fn + "." + ln.split()[-1]).lower()
+                for ch, rep in (("á", "a"), ("é", "e"), ("í", "i"), ("ó", "o"),
+                                ("ú", "u"), ("ñ", "n"), ("'", "")):
+                    slug = slug.replace(ch, rep)
+                email = "%s@%s" % (slug, dom)
+                if email not in used:
+                    break
+            else:
+                continue
+            used.add(email)
+            uni = "IE University" if "ie.edu" in dom else "Universidad de Valladolid - Campus Segovia"
+            sids.append(db.run(
+                "INSERT INTO students(email,name,university,verified,locale,degree,year,"
+                "wallet_cents,saved_cents,created_at,invite_code) VALUES(?,?,?,1,?,?,?,?,0,?,?)",
+                (email, fn + " " + ln, uni, "en" if dom == "student.ie.edu" else "es",
+                 degree, rnd.choice(years), rnd.randrange(1000, 6000), now,
+                 db.invite_for(fn + ln))))
+
+    # --- activity, so "my university" has something true to aggregate
+    all_offers = db.q("SELECT id,business_id,list_cents,student_cents FROM offers WHERE active=1")
+    all_events = db.q("SELECT id,business_id,list_cents,student_cents FROM events WHERE active=1")
+    made = 0
+    for si in sids:
+        for _ in range(rnd.randrange(0, 5)):
+            use_event = all_events and rnd.random() < 0.4
+            row = rnd.choice(all_events if use_event else all_offers)
+            paid, lst = row["student_cents"], row["list_cents"]
+            comm = int(round(paid * COMMISSION_FOR_SEED / 100.0))
+            db.run("INSERT INTO transactions(student_id,business_id,ref_type,ref_id,list_cents,"
+                   "paid_cents,saved_cents,commission_cents,platform_fee_cents,code,status,"
+                   "created_at,completed_at) VALUES(?,?,?,?,?,?,?,?,?,?,'completed',?,?)",
+                   (si, row["business_id"], "event" if use_event else "offer", row["id"],
+                    lst, paid, lst - paid, comm, 120 if use_event else 0,
+                    db.code6(), now - rnd.randrange(0, 21 * 86400), now))
+            db.run("UPDATE students SET saved_cents = saved_cents + ? WHERE id=?",
+                   (lst - paid, si))
+            made += 1
+
     for bi, si, rating, body, status in REVIEWS:
         db.run("INSERT INTO reviews(business_id,student_id,rating,body,status,created_at) "
                "VALUES(?,?,?,?,?,?)", (bids[bi], sids[si], rating, body, status, now))
 
-    print("seeded: %d venues reales de Segovia, %d ofertas, %d eventos, %d estudiantes, %d reseñas"
-          % (len(bids), len(OFFERS), len(EVENTS), len(sids), len(REVIEWS)))
+    print("seeded: %d venues reales de Segovia, %d ofertas, %d eventos, %d estudiantes, "
+          "%d reseñas, %d compras"
+          % (len(bids), len(OFFERS), len(EVENTS), len(sids), len(REVIEWS), made))
     print("AVISO: negocios reales, descuentos ficticios. La interfaz debe decirlo.")
 
 

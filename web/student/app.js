@@ -2,16 +2,31 @@
    Where a decision came from the international benchmark (UNiDAYS, Student Beans,
    TOTUM, Knaek, Mecenat, Carte Culture) it is marked BENCH. */
 const $ = s => document.querySelector(s);
-let ME = null, TAB = 'shop', RESUME = null;
+let ME = null, TAB = 'map', RESUME = null;
+let MAP = null, MAPLAYER = null, MARKS = [];
 const PREF = JSON.parse(localStorage.getItem('agora_pref') || '{}');
 const savePref = () => localStorage.setItem('agora_pref', JSON.stringify(PREF));
 
+/* Phase 1 is a leisure discounts app and the map is its front door, so the map
+   is the first tab and the one the app opens on. Buying and going out are the
+   two things a student does; the rest is support. Work is still built and still
+   reachable from the card, but it is not what this phase is about. */
 const TABS = [
-  { id: 'shop',   label: 'Table',  icon: 'amphora' },
-  { id: 'events', label: 'Agenda', icon: 'arch' },
-  { id: 'jobs',   label: 'Work',   icon: 'tablet' },
-  { id: 'me',     label: 'Card',   icon: 'bust' },
+  { id: 'map',    label: 'Map',      icon: 'map' },
+  { id: 'buy',    label: 'Buy',      icon: 'amphora' },
+  { id: 'out',    label: 'Go out',   icon: 'arch' },
+  { id: 'campus', label: 'Campus',   icon: 'colonnade' },
+  { id: 'me',     label: 'Card',     icon: 'bust' },
 ];
+
+/* The seven categories, mirrored from agora/leisure.py. The API ships the list
+   with every /api/map call, so this is only the fallback ordering and colours
+   for a screen that renders before that call lands. */
+let CATS = [];
+const catIcon = k => ICON[(CATS.find(c => c.key === k) || {}).icon] || ICON.seal;
+const catColour = k => (CATS.find(c => c.key === k) || {}).colour || 'var(--bronze)';
+const catLabel = k => (CATS.find(c => c.key === k) || {}).en || '';
+const catsIn = group => CATS.filter(c => c.group === group);
 
 /* ------------------------------------------------------------------ gate */
 document.body.insertAdjacentHTML('afterbegin', plateDefs());
@@ -143,65 +158,253 @@ const wireGuest = (why) => {
 
 async function render() {
   const v = $('#view');
-  v.innerHTML = head('·', '', '') + skeleton(5);
+  v.classList.toggle('is-map', TAB === 'map');
+  if (TAB !== 'map') { MAP = null; MARKS = []; }
+  v.innerHTML = TAB === 'map' ? '' : head('·', '', '') + skeleton(5);
   try {
-    if (TAB === 'shop') return shop(v);
-    if (TAB === 'events') return events(v);
-    if (TAB === 'jobs') return jobs(v);
+    if (TAB === 'map') return mapScreen(v);
+    if (TAB === 'buy') return listScreen(v, 'buy');
+    if (TAB === 'out') return listScreen(v, 'out');
+    if (TAB === 'campus') return campus(v);
     return card(v);
   } catch (e) { v.innerHTML = emptyState('close', 'We could not load this', e.message); }
 }
 
-/* ----------------------------------------------------------- I · the table */
+
+/* ------------------------------------------------------- I · the map
+   BENCH — TOTUM and Student Beans both bury location behind a search box, and
+   both are mostly used from the sofa. The thing a student in Segovia actually
+   has is a street and ten minutes, so the first screen answers "what is near
+   me, and from how much" without a single tap. */
+
+const chiprow = (sel, cats, attr) =>
+  `<div class="chiprow">
+     <button class="chip" data-${attr}="" aria-pressed="${!sel}">Everything</button>
+     ${cats.map(c => `<button class="chip" data-${attr}="${c.key}"
+        aria-pressed="${sel === c.key}">${c.en}</button>`).join('')}
+   </div>`;
+
+async function mapScreen(v) {
+  const sel = PREF.leisure || '';
+  v.innerHTML = `
+    <div class="mapstage">
+      <div id="map"></div>
+      <div class="mapchips"><div id="mapchips"></div></div>
+    </div>
+    <div class="maplist" id="maplist">${skeleton(4)}</div>`;
+
+  const data = await Agora.get('/api/map', sel ? { leisure: sel } : {});
+  CATS = data.categories || CATS;
+  $('#mapchips').innerHTML = chiprow(sel, CATS, 'c');
+  $('#mapchips').querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
+    PREF.leisure = b.dataset.c; savePref(); MAP = null; render();
+  });
+
+  const pins = data.pins.filter(p => p.lat != null && p.lng != null);
+  drawMap(pins, data.centre);
+  paintMapList(pins, sel);
+}
+
+function drawMap(pins, centre) {
+  const host = $('#map');
+  if (!host) return;
+  // Leaflet comes from a CDN. On a phone on campus wifi, or behind a captive
+  // portal, it may simply never arrive — and a blank grey rectangle where the
+  // main screen should be is the worst possible failure. So: say so, and let
+  // the list below carry the screen.
+  if (window.AGORA_NO_MAP || typeof L === 'undefined') {
+    host.innerHTML = `
+      <div class="nomap">
+        <div class="ic">${ICON.pin}</div>
+        <div class="t-title" style="font-size:17px">The map needs a connection</div>
+        <p class="t-meta" style="margin:8px auto 0;max-width:30ch">
+          Everything below still works, sorted by part of the city.</p>
+      </div>`;
+    return;
+  }
+  // Zoom sits bottom-right: top-left is where the category chips live, and a
+  // control under a chip is a control nobody can press.
+  MAP = L.map(host, { zoomControl: false, attributionControl: true })
+         .setView([centre.lat, centre.lng], 14);
+  L.control.zoom({ position: 'bottomright' }).addTo(MAP);
+  // OpenStreetMap's own tiles. CARTO's light basemap now demands an API key —
+  // it renders "API KEY REQUIRED" across the city — so it is not an option for
+  // a demo. OSM's tile policy is fine at this volume; a real launch needs a
+  // paid provider (Mapbox, MapTiler, Thunderforest) or self-hosted tiles.
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors',
+  }).addTo(MAP);
+
+  MARKS = pins.map(p => {
+    const m = L.marker([p.lat, p.lng], {
+      icon: L.divIcon({
+        className: 'pin', iconSize: null,
+        html: `<span class="b"><span class="d" style="background:${catColour(p.leisure)}">
+                 ${catIcon(p.leisure)}</span>${money(p.from_eur)}</span>`,
+      }),
+    }).addTo(MAP);
+    m.on('click', () => venueSheet(p));
+    return { id: p.business_id, m };
+  });
+  if (pins.length) {
+    // Asymmetric on purpose: the chips float over the top of the stage and a
+    // pin tucked under them is a price nobody can read.
+    MAP.fitBounds(L.latLngBounds(pins.map(p => [p.lat, p.lng])),
+                  { paddingTopLeft: [34, 74], paddingBottomRight: [34, 40] });
+  }
+  // The stage is sized in vh and the map is built before layout settles.
+  setTimeout(() => MAP && MAP.invalidateSize(), 60);
+}
+
+function paintMapList(pins, sel) {
+  const box = $('#maplist');
+  if (!box) return;
+  const title = sel ? catLabel(sel) : 'Everywhere in Segovia';
+  box.innerHTML =
+    demoNote() +
+    guestStrip('buy from your phone and show the code at the door') +
+    `<div class="lead-in"><div class="inscript dim">${esc(title.toUpperCase())}</div>
+       <span class="t-meta">${pins.length} place${pins.length === 1 ? '' : 's'}</span></div>` +
+    (pins.length
+      ? `<div class="rows stagger">${pins.map((p, i) => `
+          <button class="row-item" data-p="${p.business_id}" style="animation-delay:${i * 26}ms">
+            <span class="lead">${monogram(p.name)}</span>
+            <span class="body">
+              <span class="ttl">${esc(p.name)}</span>
+              <span class="sub">${esc(catLabel(p.leisure))} · ${esc(ZONE[p.zone] || p.zone)}</span>
+              <span class="sub cut">${p.offers ? p.offers + ' discount' + (p.offers === 1 ? '' : 's') : ''}${
+                p.offers && p.events ? ' · ' : ''}${p.events ? p.events + ' event' + (p.events === 1 ? '' : 's') : ''}</span>
+            </span>
+            <span class="tail"><span class="t-meta">from</span><br>
+              <span class="price">${money(p.from_eur)}</span></span>
+          </button>`).join('')}</div>`
+      : emptyState('pin', 'Nothing here yet', 'No venue in this category has a live price. Try another one.'));
+  wireGuest('Verify once with your university email.<br><b>Then every price in Segovia is one tap away.</b>');
+  box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+    const p = pins.find(x => x.business_id == b.dataset.p);
+    if (MAP && p.lat != null) MAP.flyTo([p.lat, p.lng], 16, { duration: .5 });
+    venueSheet(p);
+  });
+}
+
+/* Everything one venue holds, in one sheet: the map pin and the list row both
+   land here, so a student never has to work out which screen a price lives on. */
+async function venueSheet(p) {
+  sheet(`<div class="hero">${plate(p.name, 'b' + p.business_id)}
+      <div class="cap"><div class="k">${esc(catLabel(p.leisure))}</div>
+        <div class="n">${esc(p.name)}</div></div></div>
+    <p class="t-meta">${esc(p.address || '')}${p.zone ? ' · ' + esc(ZONE[p.zone] || p.zone) : ''}</p>
+    <div id="vbody" style="margin:16px 0 0">${skeleton(3)}</div>`);
+  const [{ offers }, { events }] = await Promise.all([
+    Agora.get('/api/offers', {}), Agora.get('/api/events', {})]);
+  const mine = offers.filter(o => o.business_id === p.business_id);
+  const evs = events.filter(e => e.business_id === p.business_id);
+  const box = $('#vbody');
+  if (!box) return;
+  box.innerHTML =
+    (mine.length ? `<div class="inscript dim" style="margin:0 0 9px">DISCOUNTS</div>
+      <div class="rows">${mine.map(o => `
+        <button class="row-item" data-vo="${o.id}">
+          <span class="body"><span class="ttl">${esc(o.title_en.replace(/ - .*$/, ''))}</span>
+            <span class="sub cut">${KIND[o.kind]} · −${o.discount_pct}%</span></span>
+          <span class="tail"><span class="price">${money(o.student_eur)}</span><br>
+            <span class="was">${money(o.list_eur)}</span></span>
+        </button>`).join('')}</div>` : '') +
+    (evs.length ? `<div class="inscript dim" style="margin:20px 0 9px">WHAT IS ON</div>
+      <div class="rows">${evs.map(e => `
+        <button class="row-item" data-ve="${e.id}">
+          <span class="body"><span class="ttl">${esc(e.title_en)}</span>
+            <span class="sub">${esc(e.when)}</span></span>
+          <span class="tail"><span class="price">${money(e.student_eur)}</span><br>
+            <span class="was">${money(e.list_eur)}</span></span>
+        </button>`).join('')}</div>` : '') +
+    (!mine.length && !evs.length
+      ? emptyState('pin', 'Nothing live here', 'This venue has no student price on sale today.') : '') +
+    '<div style="height:16px"></div>';
+  box.querySelectorAll('[data-vo]').forEach(b => b.onclick = () =>
+    offer(mine.find(o => o.id == b.dataset.vo)));
+  box.querySelectorAll('[data-ve]').forEach(b => b.onclick = () =>
+    evSheet(evs.find(e => e.id == b.dataset.ve)));
+}
+
+/* ------------------------------------------------- II · buying and going out */
 /* Four kinds that mean the same thing to a roast house, a cinema and a padel
    court. The time window is an attribute of the offer, not a kind of its own. */
 const KIND = { percent: 'Percent off', fixed: 'Student price', twofor: 'Two for one', bundle: 'Bundle' };
 const ZONE = { centro: 'Old town', nueva: 'Nueva Segovia', sanlo: 'San Lorenzo', zorrilla: 'J. Zorrilla' };
 
-async function shop(v) {
-  const f = { kind: PREF.kind || '', zone: PREF.zone || '' };
-  const { offers } = await Agora.get('/api/offers', f);
-  const now = offers.filter(o => o.discount_pct >= 40).slice(0, 6);
-  const kinds = [['', 'Everything'], ['percent', 'Percent off'], ['fixed', 'Student price'],
-                 ['twofor', 'Two for one'], ['bundle', 'Bundles']];
-  const zones = [['', 'All Segovia'], ...Object.entries(ZONE)];
+/* One screen for both halves of phase 1, because they behave the same: pick a
+   category, see a price, pay. "Buy" is the two things you take away with you,
+   "Go out" the five you turn up to — and the only real difference is that
+   going out has a date on it. */
+async function listScreen(v, group) {
+  const cats = catsIn(group);
+  let sel = PREF['sel_' + group] || '';
+  if (sel && !cats.some(c => c.key === sel)) sel = '';
+
+  const want = sel ? [sel] : cats.map(c => c.key);
+  const [{ offers }, ev] = await Promise.all([
+    Agora.get('/api/offers', sel ? { leisure: sel } : {}),
+    group === 'out' ? Agora.get('/api/events', sel ? { leisure: sel } : {})
+                    : Promise.resolve({ events: [] }),
+  ]);
+  const mine = offers.filter(o => want.includes(o.leisure));
+  const events = (ev.events || []).filter(e => want.includes(e.leisure));
+
+  const copy = group === 'buy'
+    ? ['I · SHOP·AND·DINE', 'Buy for less',
+       'Student prices held at real Segovia tables and shops, inside the walls and beyond them.']
+    : ['II · GO·OUT', 'Go out for less',
+       'Clubbing, football, theatre, cinema, and sport you turn up to and play together.'];
+
   v.innerHTML =
-    head('I · SHOP·AND·DINE', 'At the table',
-      'Prices held for verified students, inside the walls and beyond them.') +
+    head(copy[0], copy[1], copy[2]) +
     demoNote() +
     guestStrip('pay from your phone and keep what you save') +
-    (now.length && !f.kind ? `
-      <div class="inscript dim" style="margin:0 0 11px">BIGGEST CUTS TODAY</div>
-      <div class="rail">${now.map(o => `
-        <button class="railcard" data-o="${o.id}">
-          <span class="art">${plate(o.business_name, 'o' + o.id)}
-            <span class="over"><span class="n">${esc(o.business_name)}</span>
-            <span class="m">${esc(o.window_label || ZONE[o.zone] || '')}</span></span></span>
-          <span class="bar"><span class="p">${money(o.student_eur)}</span>
-            <span class="w">${money(o.list_eur)}</span></span>
-        </button>`).join('')}</div>` : '') +
-    `<div class="filters"><div class="chiprow">${kinds.map(([k, l]) =>
-      `<button class="chip" data-k="${k}" aria-pressed="${f.kind === k}">${l}</button>`).join('')}</div></div>` +
-    `<div class="filters"><div class="chiprow">${zones.map(([k, l]) =>
-      `<button class="chip" data-z="${k}" aria-pressed="${f.zone === k}">${l}</button>`).join('')}</div></div>` +
-    (offers.length
-      ? `<div class="rows stagger">${offers.map((o, i) => `
-          <button class="row-item" data-o="${o.id}" style="animation-delay:${i * 32}ms">
-            <span class="lead">${monogram(o.business_name)}</span>
-            <span class="body">
-              <span class="ttl">${esc(o.title_en.replace(/ - .*$/, ''))}</span>
-              <span class="sub">${esc(o.business_name)} · ${esc(ZONE[o.zone] || o.zone)}</span>
-              <span class="sub cut">${KIND[o.kind]} · −${o.discount_pct}%</span>
-              ${proof(o)}
+    `<div class="filters">${chiprow(sel, cats, 'g')}</div>` +
+    (events.length ? `
+      <div class="inscript dim" style="margin:4px 0 11px">WITH A DATE ON IT</div>
+      <div class="stagger">${events.map((e, i) => `
+        <button class="evcard" data-e="${e.id}" style="animation-delay:${i * 34}ms">
+          <span class="art">${plate(e.title_en, 'e' + e.id)}
+            <span class="tagline">${esc(catLabel(e.leisure) || e.category)}</span>
+            <span class="when">${esc(e.when)}</span></span>
+          <span class="meat">
+            <span class="n">${esc(e.title_en)}</span>
+            <span class="m">${esc(e.venue || e.business_name)}${e.uses ? ' · ' + e.uses + ' going' : ''}</span>
+            <span class="row2">
+              <span class="proof ${e.left <= 8 ? 'hot' : ''}">${e.left} of ${e.capacity} left</span>
+              <span><span class="price" style="font-size:21px">${money(e.student_eur)}</span>
+                <span class="was" style="margin-left:6px">${money(e.list_eur)}</span></span>
             </span>
-            <span class="tail"><span class="price">${money(o.student_eur)}</span><br>
-              <span class="was">${money(o.list_eur)}</span></span>
-          </button>`).join('')}</div>`
-      : emptyState('amphora', 'Nothing open here', 'Try another part of the city, or clear the filter.'));
-  wireGuest('Verify once.<br><b>Then every table in Segovia is one tap away.</b>');
-  v.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { PREF.kind = b.dataset.k; savePref(); render(); });
-  v.querySelectorAll('[data-z]').forEach(b => b.onclick = () => { PREF.zone = b.dataset.z; savePref(); render(); });
-  v.querySelectorAll('[data-o]').forEach(b => b.onclick = () => offer(offers.find(o => o.id == b.dataset.o)));
+          </span>
+        </button>`).join('')}</div>` : '') +
+    (mine.length ? `
+      <div class="inscript dim" style="margin:${events.length ? '22px' : '4px'} 0 11px">${
+        group === 'out' ? 'ON ANY DAY' : 'ON THE TABLE'}</div>
+      <div class="rows stagger">${mine.map((o, i) => `
+        <button class="row-item" data-o="${o.id}" style="animation-delay:${i * 30}ms">
+          <span class="lead">${monogram(o.business_name)}</span>
+          <span class="body">
+            <span class="ttl">${esc(o.title_en.replace(/ - .*$/, ''))}</span>
+            <span class="sub">${esc(o.business_name)} · ${esc(catLabel(o.leisure))}</span>
+            <span class="sub cut">${KIND[o.kind]} · −${o.discount_pct}%</span>
+            ${proof(o)}
+          </span>
+          <span class="tail"><span class="price">${money(o.student_eur)}</span><br>
+            <span class="was">${money(o.list_eur)}</span></span>
+        </button>`).join('')}</div>` : '') +
+    (!mine.length && !events.length
+      ? emptyState(group === 'buy' ? 'amphora' : 'arch', 'Nothing here today',
+          'No student price in this category right now. Try another one.') : '');
+
+  wireGuest('Verify once.<br><b>Then every student price in Segovia is one tap away.</b>');
+  v.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
+    PREF['sel_' + group] = b.dataset.g; savePref(); render();
+  });
+  v.querySelectorAll('[data-o]').forEach(b => b.onclick = () => offer(mine.find(o => o.id == b.dataset.o)));
+  v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => evSheet(events.find(e => e.id == b.dataset.e)));
 }
 
 function offer(o) {
@@ -262,37 +465,10 @@ function pass(title, venue, code, line, note) {
   $('#done').onclick = () => { shut(); render(); };
 }
 
-/* ---------------------------------------------------------- II · the agenda */
+/* Legacy event vocabulary, still written to the database alongside the
+   leisure category so older rows keep reading. */
 const EV = { party: 'Party', theatre: 'Theatre', concert: 'Concert',
              sport_play: 'Play', sport_watch: 'Watch', tour: 'Walk' };
-
-async function events(v) {
-  const { events } = await Agora.get('/api/events', {});
-  v.innerHTML =
-    head('II · THE·AGENDA', 'This week',
-      'Parties, theatre, concerts, matches to watch and sport to play together.') +
-    demoNote() +
-    guestStrip('buy a student ticket') +
-    (events.length
-      ? `<div class="stagger">${events.map((e, i) => `
-          <button class="evcard" data-e="${e.id}" style="animation-delay:${i * 36}ms">
-            <span class="art">${plate(e.title_en, 'e' + e.id)}
-              <span class="tagline">${EV[e.category] || e.category}</span>
-              <span class="when">${esc(e.when)}</span></span>
-            <span class="meat">
-              <span class="n">${esc(e.title_en)}</span>
-              <span class="m">${esc(e.venue || e.business_name)}${e.uses ? ' · ' + e.uses + ' going' : ''}</span>
-              <span class="row2">
-                <span class="proof ${e.left <= 8 ? 'hot' : ''}">${e.left} of ${e.capacity} left</span>
-                <span><span class="price" style="font-size:21px">${money(e.student_eur)}</span>
-                  <span class="was" style="margin-left:6px">${money(e.list_eur)}</span></span>
-              </span>
-            </span>
-          </button>`).join('')}</div>`
-      : emptyState('arch', 'The agenda is quiet', 'Nothing on sale right now. Come back on Thursday.'));
-  wireGuest('Student tickets are held for verified students.<br><b>One email, once.</b>');
-  v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => evSheet(events.find(e => e.id == b.dataset.e)));
-}
 
 function evSheet(e) {
   sheet(`
@@ -327,7 +503,14 @@ function evSheet(e) {
   };
 }
 
-/* ------------------------------------------------------------- III · work */
+/* ----------------------------------------------------------------- work
+   Not a phase-1 tab. The screen is unchanged; only its door moved, from the
+   tab bar to the card, so the five that matter keep the thumb. */
+function workSheet() {
+  sheet('<div id="workbody">' + skeleton(4) + '</div>');
+  jobs($('#workbody'));
+}
+
 async function jobs(v) {
   const k = PREF.jobkind || '';
   const { jobs } = await Agora.get('/api/jobs', k ? { kind: k } : {});
@@ -414,7 +597,92 @@ function teach() {
   };
 }
 
-/* --------------------------------------------------------------- IV · card */
+
+/* -------------------------------------------------- IV · my university
+   BENCH — Mecenat and Knaek both show national rankings, which a student in a
+   city of two campuses reads as noise. What travels here is what the people in
+   your own lecture hall are doing. That is also the dangerous one: a degree-year
+   group in Segovia can be a dozen people, so a count can name them. The API
+   refuses any cohort under five and this screen says so out loud rather than
+   quietly showing a blank. */
+const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+
+async function campus(v) {
+  const sel = { university: PREF.uni || (ME ? ME.university : ''), degree: PREF.degree || '' };
+  const d = await Agora.get('/api/university', sel);
+  const unis = d.universities || [];
+
+  // Built in pieces rather than one nested ternary: the version that read as
+  // one expression hid a paren mismatch that only the parser could see.
+  const places = (d.popular || []).length ? `
+    <div class="inscript dim" style="margin:4px 0 11px">WHERE THEY ACTUALLY GO</div>
+    <div class="rows stagger">${(d.popular || []).map((r, i) => `
+      <button class="row-item" data-pb="${r.business_id}" style="animation-delay:${i * 28}ms">
+        <span class="lead">${monogram(r.name)}</span>
+        <span class="body">
+          <span class="ttl">${esc(r.name)}</span>
+          <span class="sub">${r.people} student${r.people === 1 ? '' : 's'} · ${r.buys} time${r.buys === 1 ? '' : 's'}</span>
+        </span>
+        <span class="tail"><span class="t-meta">saved</span><br>
+          <span class="price">${money(r.saved_eur)}</span></span>
+      </button>`).join('')}</div>`
+    : emptyState('colonnade', 'No pattern yet',
+        'Not enough has been bought here to show where this group goes.');
+
+  const written = (d.reviews || []).length ? `
+    <div class="inscript dim" style="margin:24px 0 2px">WHAT THEY WROTE</div>
+    <div>${d.reviews.map(r => `
+      <div class="revcard">
+        <div class="top"><span class="vn">${esc(r.business_name)}</span>
+          <span class="stars">${stars(r.rating)}</span></div>
+        <div class="who">${esc(r.degree || 'Student')}${r.year ? ', year ' + r.year : ''}</div>
+        <p class="bd">${esc(r.body)}</p>
+      </div>`).join('')}</div>
+    <p class="t-meta" style="margin:16px 0 0">Every review is read by a moderator before it
+      appears. Nothing here is anonymous to us, and nothing here names anyone to you.</p>` : '';
+
+  const small = `Fewer than ${d.min_cohort} people, so nothing is broken down —
+    a count this small would point at individuals.`;
+
+  v.innerHTML =
+    head('III · MY·UNIVERSITY', 'Your campus',
+      'What students here actually buy — never who. Counts only, and only once a group is big enough to be a group.') +
+    (unis.length > 1 ? `<div class="filters"><div class="chiprow">${unis.map(u =>
+      `<button class="chip" data-u="${esc(u.name)}" aria-pressed="${d.university === u.name}">${
+        esc(u.name.replace('Universidad de Valladolid - Campus Segovia', 'UVa Segovia'))}</button>`).join('')}
+      </div></div>` : '') +
+    `<div class="filters"><div class="chiprow">
+       <button class="chip" data-d="" aria-pressed="${!d.degree}">All degrees</button>
+       ${(d.degrees || []).map(x => `
+         <button class="chip" data-d="${esc(x.degree)}" aria-pressed="${d.degree === x.degree}"
+           aria-disabled="${!x.enough}">${esc(x.degree)}</button>`).join('')}
+     </div></div>` +
+    `<div class="cohort">
+       <div class="n">${d.cohort}</div>
+       <div class="k">verified student${d.cohort === 1 ? '' : 's'} in
+         <b>${esc(d.degree || d.university)}</b>${d.degree ? '' : ' across every degree'}.
+         ${d.enough ? '' : small}</div>
+     </div>` +
+    (d.enough ? places + written : '') +
+    '<div style="height:20px"></div>';
+
+  v.querySelectorAll('[data-u]').forEach(b => b.onclick = () => {
+    PREF.uni = b.dataset.u; PREF.degree = ''; savePref(); render();
+  });
+  v.querySelectorAll('[data-d]').forEach(b => b.onclick = () => {
+    if (b.getAttribute('aria-disabled') === 'true') {
+      return toast(`Fewer than ${d.min_cohort} students on that degree — too few to show on its own`);
+    }
+    PREF.degree = b.dataset.d; savePref(); render();
+  });
+  v.querySelectorAll('[data-pb]').forEach(b => b.onclick = async () => {
+    const { pins } = await Agora.get('/api/map', {});
+    const p = pins.find(x => x.business_id == b.dataset.pb);
+    if (p) venueSheet(p);
+  });
+}
+
+/* --------------------------------------------------------------- V · card */
 function walletSheet() {
   sheet(`
     <div class="inscript" style="margin:4px 0 10px">Your wallet</div>
@@ -497,7 +765,7 @@ async function card(v) {
         <span class="tail"><span style="font-weight:600">${money(t.paid_eur)}</span><br>
           <span class="t-meta" style="color:var(--verd)">saved ${money(t.saved_eur)}</span></span>
       </div>`).join('')}</div>`
-      : `<p class="t-meta" style="margin:12px 0 0">Nothing yet. Your first table is waiting under Table.</p>`}
+      : `<p class="t-meta" style="margin:12px 0 0">Nothing yet. Open the map and pick a price.</p>`}
 
     ${act.my_listings.length ? `<div class="inscript dim" style="margin-top:30px">YOU TEACH</div>
       <div class="rows" style="margin-top:12px">${act.my_listings.map(j => `
@@ -511,8 +779,11 @@ async function card(v) {
           <span class="sub">${esc(a.poster)}</span></span>
           <span class="tail"><span class="badge">${esc(a.status)}</span></span></div>`).join('')}</div>` : ''}
 
-    <button class="btn btn--plain btn--block" id="out" style="margin:34px 0 10px">Sign out</button>`;
+    <button class="btn btn--quiet btn--block" id="work" style="margin:34px 0 0">
+      ${ICON.tablet}<span>Shifts and tutoring</span></button>
+    <button class="btn btn--plain btn--block" id="out" style="margin:10px 0 10px">Sign out</button>`;
   $('#top').onclick = walletSheet;
+  $('#work').onclick = () => workSheet();
   $('#inv').onclick = () => inviteSheet(student);
   $('#lang').onclick = async () => {
     try { await Agora.post('/api/me/locale', { locale: student.locale === 'en' ? 'es' : 'en' });

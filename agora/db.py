@@ -42,7 +42,12 @@ CREATE TABLE IF NOT EXISTS businesses (
 CREATE TABLE IF NOT EXISTS offers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   business_id INTEGER NOT NULL REFERENCES businesses(id),
-  kind TEXT NOT NULL,                      -- discount | menu | star | table
+  kind TEXT NOT NULL,                      -- percent | fixed | twofor | bundle
+  -- Phase 1 is a leisure discounts app, so what you are buying is the primary
+  -- axis and the shape of the discount is secondary. One vocabulary for offers
+  -- and events alike: restaurants | products | club | football | theatre |
+  -- cinema | play. See LEISURE in agora/leisure.py.
+  leisure TEXT NOT NULL DEFAULT '',
   title_en TEXT NOT NULL,
   title_es TEXT NOT NULL,
   detail_en TEXT NOT NULL DEFAULT '',
@@ -59,7 +64,8 @@ CREATE TABLE IF NOT EXISTS offers (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   business_id INTEGER NOT NULL REFERENCES businesses(id),
-  category TEXT NOT NULL,                  -- party | theatre | concert | sport_watch | sport_play | tour
+  category TEXT NOT NULL,                  -- legacy, kept so old rows still read
+  leisure TEXT NOT NULL DEFAULT '',        -- the phase-1 vocabulary; see leisure.py
   title_en TEXT NOT NULL,
   title_es TEXT NOT NULL,
   detail_en TEXT NOT NULL DEFAULT '',
@@ -178,6 +184,14 @@ MIGRATIONS = [
     ("businesses", "lat", "REAL"),
     ("businesses", "lng", "REAL"),
     ("businesses", "real_name", "INTEGER NOT NULL DEFAULT 0"),
+    ("offers", "leisure", "TEXT NOT NULL DEFAULT ''"),
+    ("events", "leisure", "TEXT NOT NULL DEFAULT ''"),
+]
+
+
+POST_MIGRATION_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_offer_leisure ON offers(active, leisure)",
+    "CREATE INDEX IF NOT EXISTS idx_event_leisure ON events(active, leisure)",
 ]
 
 
@@ -188,6 +202,10 @@ def init():
         cols = [r[1] for r in conn.execute("PRAGMA table_info(%s)" % table)]
         if col not in cols:
             conn.execute("ALTER TABLE %s ADD COLUMN %s %s" % (table, col, decl))
+    conn.commit()
+    # Indexes on migrated columns, once the columns are certain to exist.
+    for stmt in POST_MIGRATION_INDEXES:
+        conn.execute(stmt)
     conn.commit()
     # every student needs a code to share
     for r in conn.execute("SELECT id, name FROM students WHERE invite_code IS NULL").fetchall():
