@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS students (
   university TEXT NOT NULL,
   verified INTEGER NOT NULL DEFAULT 0,
   locale TEXT NOT NULL DEFAULT 'en',
+  degree TEXT NOT NULL DEFAULT '',
+  year INTEGER NOT NULL DEFAULT 0,
   wallet_cents INTEGER NOT NULL DEFAULT 0,
   saved_cents INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
@@ -31,6 +33,9 @@ CREATE TABLE IF NOT EXISTS businesses (
   premium INTEGER NOT NULL DEFAULT 0,
   profile_complete INTEGER NOT NULL DEFAULT 0,
   verified INTEGER NOT NULL DEFAULT 0,
+  lat REAL,
+  lng REAL,
+  real_name INTEGER NOT NULL DEFAULT 0,   -- a real Segovia business, shown with a demo notice
   created_at INTEGER NOT NULL
 );
 
@@ -128,6 +133,21 @@ CREATE TABLE IF NOT EXISTS verifications (
   expires_at INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  business_id INTEGER NOT NULL REFERENCES businesses(id),
+  student_id INTEGER NOT NULL REFERENCES students(id),
+  rating INTEGER NOT NULL,                 -- 1..5
+  body TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'pending',  -- pending | published | rejected
+  moderated_by TEXT NOT NULL DEFAULT '',
+  moderated_at INTEGER,
+  created_at INTEGER NOT NULL,
+  UNIQUE(business_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_review_status ON reviews(status, business_id);
+
 CREATE TABLE IF NOT EXISTS assistant_state (
   business_id INTEGER PRIMARY KEY REFERENCES businesses(id),
   state TEXT NOT NULL DEFAULT '{}',
@@ -153,6 +173,11 @@ def connect():
 MIGRATIONS = [
     ("students", "invite_code", "TEXT"),
     ("students", "invited_by", "INTEGER"),
+    ("students", "degree", "TEXT NOT NULL DEFAULT ''"),
+    ("students", "year", "INTEGER NOT NULL DEFAULT 0"),
+    ("businesses", "lat", "REAL"),
+    ("businesses", "lng", "REAL"),
+    ("businesses", "real_name", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 
