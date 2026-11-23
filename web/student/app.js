@@ -203,6 +203,38 @@ async function mapScreen(v) {
   const pins = data.pins.filter(p => p.lat != null && p.lng != null);
   drawMap(pins, data.centre);
   paintMapList(pins, sel);
+  paintTopPicks(pins);
+}
+
+/* Earned, never bought. A venue can pay to be promoted and that promotion is
+   labelled as such; it cannot pay its way in here, because this list comes
+   only from moderated reviews written by students who paid. Keeping the two
+   apart is the whole reason a label like this is worth anything. */
+async function paintTopPicks(pins) {
+  const slot = $('#toppicks');
+  if (!slot) return;
+  let d;
+  try { d = await Agora.get('/api/top-picks', {}); } catch (e) { return; }
+  if (!$('#toppicks') || !d.picks.length) return;
+  slot.innerHTML =
+    `<div class="lead-in"><div class="inscript dim">TOP PICKS</div>
+       <span class="t-meta">by students, not by us</span></div>
+     <div class="rail">${d.picks.map(b => `
+       <button class="railcard" data-tp="${b.business_id}">
+         <span class="art">${plate(b.name, 'b' + b.business_id)}
+           <span class="over"><span class="n">${esc(b.name)}</span>
+           <span class="m">${b.avg_rating.toFixed(1)}/5 · ${b.reviews} reviews</span></span></span>
+         <span class="bar"><span class="p">${b.from_eur != null ? money(b.from_eur) : '—'}</span>
+           <span class="w" style="text-decoration:none">${esc(b.leisure_en)}</span></span>
+       </button>`).join('')}</div>
+     <p class="t-meta" style="margin:-6px 0 18px">A top pick needs at least
+       ${d.min_reviews} published reviews and a ${d.min_avg} average. No venue can buy one.</p>`;
+  slot.querySelectorAll('[data-tp]').forEach(btn => btn.onclick = () => {
+    const p = pins.find(x => x.business_id == btn.dataset.tp) ||
+              d.picks.find(x => x.business_id == btn.dataset.tp);
+    if (MAP && p && p.lat != null) MAP.flyTo([p.lat, p.lng], 16, { duration: .5 });
+    venueSheet(p);
+  });
 }
 
 function drawMap(pins, centre) {
@@ -264,6 +296,7 @@ function paintMapList(pins, sel) {
   box.innerHTML =
     demoNote() +
     guestStrip('buy from your phone and show the code at the door') +
+    '<div id="toppicks"></div>' +
     `<div class="lead-in"><div class="inscript dim">${esc(title.toUpperCase())}</div>
        <span class="t-meta">${pins.length} place${pins.length === 1 ? '' : 's'}</span></div>` +
     (pins.length
@@ -321,11 +354,93 @@ async function venueSheet(p) {
         </button>`).join('')}</div>` : '') +
     (!mine.length && !evs.length
       ? emptyState('pin', 'Nothing live here', 'This venue has no student price on sale today.') : '') +
-    '<div style="height:16px"></div>';
+    '<div id="vrev"></div>';
   box.querySelectorAll('[data-vo]').forEach(b => b.onclick = () =>
     offer(mine.find(o => o.id == b.dataset.vo)));
   box.querySelectorAll('[data-ve]').forEach(b => b.onclick = () =>
     evSheet(evs.find(e => e.id == b.dataset.ve)));
+  paintReviews(p);
+}
+
+/* ------------------------------------------------------------- reviews
+   BENCH — the student-card apps that carry reviews (Knaek, Mecenat) let anyone
+   signed in write one, and the ratings read like noise. Here the gate is not
+   "are you a student" but "did you pay here", which the app already knows. It
+   is the one thing a scraped review site cannot copy. */
+async function paintReviews(p) {
+  const box = $('#vrev');
+  if (!box) return;
+  box.innerHTML = '<div style="height:10px"></div>' + skeleton(2);
+  let d;
+  try { d = await Agora.get('/api/reviews', { business_id: p.business_id }); }
+  catch (e) { box.innerHTML = ''; return; }
+  if (!$('#vrev')) return;
+
+  box.innerHTML =
+    `<div class="inscript dim" style="margin:22px 0 2px">WHAT STUDENTS SAY${
+      d.average ? ` · ${d.average.toFixed(1)}/5 from ${d.count}` : ''}</div>` +
+    (d.reviews.length
+      ? `<div>${d.reviews.slice(0, 6).map(r => `
+          <div class="revcard">
+            <div class="top"><span class="vn">${esc(r.author || 'Student')}</span>
+              <span class="stars">${stars(r.rating)}</span></div>
+            <div class="who">${esc(r.degree || 'Student')}${r.year ? ', year ' + r.year : ''} · ${esc(r.when)}</div>
+            <p class="bd">${esc(r.body)}</p>
+          </div>`).join('')}</div>`
+      : `<p class="t-meta" style="margin:10px 0 0">No published review yet.</p>`) +
+    (d.mine
+      ? `<div class="guest" style="margin:16px 0 0;background:var(--stone-02);color:var(--ink-02)">
+           <div class="t">Your review is <b style="color:var(--oxblood)">${esc(d.mine.status)}</b>.
+             ${d.mine.status === 'pending' ? 'A moderator reads it before it appears.' : ''}</div></div>`
+      : d.can_review
+        ? `<button class="btn btn--quiet btn--block" id="wrev" style="margin:16px 0 0">
+             ${ICON.scroll}<span>Write a review</span></button>`
+        : `<p class="t-meta" style="margin:14px 0 0">${esc(d.why || '')}</p>`) +
+    `<p class="t-meta" style="margin:14px 0 0">Every review is written by a student who paid
+       here, and read by a moderator before it appears. Venues cannot remove them.</p>
+     <div style="height:16px"></div>`;
+
+  const b = $('#wrev');
+  if (b) b.onclick = () => writeReview(p);
+}
+
+function writeReview(p) {
+  let rating = 0;
+  sheet(`
+    <div class="inscript" style="margin:4px 0 10px">${esc(p.name)}</div>
+    <h2 class="t-title">How was it?</h2>
+    <p class="t-body" style="margin:12px 0 18px">You are reviewing a place you actually paid for.
+      A moderator reads it before anyone else does.</p>
+    <div class="chiprow" id="rate" style="margin:0 0 6px">
+      ${[1, 2, 3, 4, 5].map(n =>
+        `<button class="chip" data-r="${n}" aria-pressed="false">${n}&nbsp;${stars(n).slice(0, n)}</button>`).join('')}
+    </div>
+    <span class="msg" id="rateMsg"></span>
+    <label class="field" style="margin-top:14px"><span class="lbl">In your own words</span>
+      <textarea class="inp" id="rbody" rows="4"
+        placeholder="What would you tell someone in your class?"></textarea>
+      <span class="msg" id="rbodyMsg"></span></label>`,
+    `<button class="btn btn--block" id="rsend">Send for review</button>`);
+
+  $('#rate').querySelectorAll('[data-r]').forEach(b => b.onclick = () => {
+    rating = +b.dataset.r;
+    $('#rate').querySelectorAll('[data-r]').forEach(x =>
+      x.setAttribute('aria-pressed', x === b));
+    $('#rateMsg').textContent = '';
+  });
+
+  $('#rsend').onclick = async e => {
+    $('#rateMsg').textContent = ''; fieldError('rbody', '');
+    if (!rating) { $('#rateMsg').textContent = 'Pick a rating first.'; return; }
+    const text = $('#rbody').value.trim();
+    if (text.length < 15) return fieldError('rbody', 'A line or two — fifteen characters at least.');
+    busy(e.currentTarget, true, 'Sending');
+    try {
+      const r = await Agora.post('/api/reviews',
+        { business_id: p.business_id, rating, body: text });
+      shut(); toast(r.message || 'Sent to a moderator');
+    } catch (err) { busy(e.currentTarget, false); fieldError('rbody', err.message); }
+  };
 }
 
 /* ------------------------------------------------- II · buying and going out */

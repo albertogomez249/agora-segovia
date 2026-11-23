@@ -174,6 +174,31 @@ LAST = ["Ruiz", "Pérez", "Martín", "Gómez", "Sanz", "Herrero", "Arribas", "De
         "Llorente", "Bravo", "Tejedor", "Olmos", "Becker", "O'Connor", "Rossi",
         "Dubois", "Novak", "Khan", "Silva", "Andersen"]
 
+# Lines a student might actually write. Kept specific — generic praise reads as
+# fake, and the whole point of a moderated review is that it reads as real.
+GOOD = [
+    "Fui con dos del piso y salimos pagando menos que en el kebab. Repetimos.",
+    "Worth it once a term. The student price is what makes it possible at all.",
+    "El sitio está lleno de turistas pero a nosotros nos trataron igual de bien.",
+    "Booked through the app, showed the code, no questions asked. It just worked.",
+    "Mejor de lo que esperaba por el precio. Pedid mesa antes de las nueve.",
+    "Staff did not blink at the student price, which is more than I can say elsewhere.",
+    "Llevo tres veces este cuatrimestre. A estos precios es que no compensa cocinar.",
+    "Went with my whole class. They handled fifteen of us without a fuss.",
+]
+MIXED = [
+    "Bien de precio, lento cuando se llena. Id pronto.",
+    "Good food, but the student slot is narrow — miss it and you pay full price.",
+    "Correcto, sin más. El descuento es lo que lo salva.",
+    "Fine for a Thursday. Would not go out of my way on a weekend.",
+    "La ración se queda corta para lo que cuesta, aun con el descuento.",
+]
+BAD = [
+    "Muy turístico y poca cantidad para el precio. No repito.",
+    "They made the student discount feel like a favour. It is not.",
+    "Está lejos del centro, solo compensa si ya vas para allá.",
+]
+
 # venue, student, rating, body, status
 REVIEWS = [
     (0, 0, 5, "Caro para el día a día, pero una vez al trimestre merece la pena. El precio de estudiante lo hace posible.", "published"),
@@ -286,9 +311,40 @@ def run():
         db.run("INSERT INTO reviews(business_id,student_id,rating,body,status,created_at) "
                "VALUES(?,?,?,?,?,?)", (bids[bi], sids[si], rating, body, status, now))
 
+    # --- reviews from the wider cohort.
+    # A review may only come from someone who paid at that venue: the API
+    # enforces it, so the demo data has to obey it too, or the screen would be
+    # showing something the product cannot produce.
+    wrote = {(r["business_id"], r["student_id"])
+             for r in db.q("SELECT business_id, student_id FROM reviews")}
+    reviews_made = 0
+    pairs = [(t["business_id"], t["student_id"]) for t in
+             db.q("SELECT DISTINCT business_id, student_id FROM transactions")]
+    rnd.shuffle(pairs)
+    for b_id, s_id in pairs:
+        if (b_id, s_id) in wrote:
+            continue
+        if rnd.random() > 0.55:          # not everyone writes, which is the truth
+            continue
+        roll = rnd.random()
+        if roll < 0.62:
+            rating, body = rnd.choice([4, 5, 5]), rnd.choice(GOOD)
+        elif roll < 0.88:
+            rating, body = 3, rnd.choice(MIXED)
+        else:
+            rating, body = rnd.choice([1, 2]), rnd.choice(BAD)
+        # Most are through; a few are still waiting, so the queue is not empty.
+        status = "published" if rnd.random() < 0.84 else "pending"
+        db.run("INSERT INTO reviews(business_id,student_id,rating,body,status,created_at) "
+               "VALUES(?,?,?,?,?,?)",
+               (b_id, s_id, rating, body, status, now - rnd.randrange(0, 20 * 86400)))
+        wrote.add((b_id, s_id))
+        reviews_made += 1
+
     print("seeded: %d venues reales de Segovia, %d ofertas, %d eventos, %d estudiantes, "
           "%d reseñas, %d compras"
-          % (len(bids), len(OFFERS), len(EVENTS), len(sids), len(REVIEWS), made))
+          % (len(bids), len(OFFERS), len(EVENTS), len(sids),
+             len(REVIEWS) + reviews_made, made))
     print("AVISO: negocios reales, descuentos ficticios. La interfaz debe decirlo.")
 
 

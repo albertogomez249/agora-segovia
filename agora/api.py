@@ -1,5 +1,5 @@
 """JSON API for the Agora student app and business console."""
-import json, time, re
+import json, os, time, re
 from . import db, assistant, leisure
 
 COMMISSION_PCT = 8.0
@@ -8,6 +8,16 @@ JOB_LISTING_CENTS = 2500       # per job post, charged to the business
 PREMIUM_CENTS = 3900           # business subscription, per month
 INVITE_CREDIT_CENTS = 500      # both sides, when an invited student signs up
 WELCOME_CENTS = 2500           # so a new student can use the app in the first minute
+
+# Who may moderate. Not a business: a venue that can bury its own bad reviews
+# is running a marketing page, not a review system. Set AGORA_MODERATORS to a
+# comma-separated list of emails; the default is nobody, and the moderation
+# console then simply refuses to let anyone in.
+MODERATORS = tuple(e.strip().lower() for e in
+                   os.environ.get("AGORA_MODERATORS", "").split(",") if e.strip())
+
+TOP_PICK_MIN_REVIEWS = 3     # below this an average is one opinion wearing a crown
+TOP_PICK_MIN_AVG = 4.3
 
 STUDENT_DOMAINS = ("student.ie.edu", "ie.edu", "uva.es", "alumnos.uva.es", "estudiante.es")
 
@@ -99,6 +109,9 @@ def auth_request(ctx, body):
                        "(@student.ie.edu, @ie.edu, @uva.es).")
     if role == "business" and is_student_email(email):
         raise ApiError("Use your professional email, not a university one.")
+    if role == "moderator" and email not in MODERATORS:
+        # Deliberately the same wording whether or not the address exists.
+        raise ApiError("That address cannot moderate Agora.")
     code = db.code6()
     db.run("INSERT INTO verifications(email, code, subject_type, payload, expires_at) "
            "VALUES(?,?,?,?,?) ON CONFLICT(email) DO UPDATE SET code=excluded.code, "
@@ -140,6 +153,11 @@ def auth_verify(ctx, body):
             sid = row["id"]
             db.run("UPDATE students SET verified=1 WHERE id=?", (sid,))
         subject_id, subject_type = sid, "student"
+    elif role == "moderator":
+        if email not in MODERATORS:
+            raise ApiError("That address cannot moderate Agora.")
+        # No row of their own: a moderator is an email on a list, not an account.
+        subject_id, subject_type = 0, "moderator"
     else:
         row = db.q("SELECT * FROM businesses WHERE email=?", (email,), one=True)
         if not row:
@@ -166,6 +184,9 @@ def ctx_with(t, i):
 
 def me(ctx, body):
     sub = auth(ctx)
+    if sub["type"] == "moderator":
+        return {"role": "moderator", "pending": db.q(
+            "SELECT COUNT(*) n FROM reviews WHERE status='pending'", one=True)["n"]}
     if sub["type"] == "student":
         s = db.q("SELECT * FROM students WHERE id=?", (sub["id"],), one=True)
         s["wallet_eur"] = money(s["wallet_cents"])
@@ -362,6 +383,151 @@ def list_jobs(ctx, body):
         j["poster"] = j["business_name"] or (j["student_name"] + " (student)" if j["student_name"] else "Agora")
         out.append(decorate_job(j))
     return {"jobs": out}
+
+
+
+# ----------------------------------------------------------------- reviews
+
+def _review_rows(where, args):
+    return db.q(
+        "SELECT r.id, r.rating, r.body, r.created_at, r.status, "
+        "b.name AS business_name, b.id AS business_id, "
+        "s.name AS student_name, s.degree, s.year, s.university "
+        "FROM reviews r JOIN businesses b ON b.id=r.business_id "
+        "JOIN students s ON s.id=r.student_id WHERE " + where +
+        " ORDER BY r.created_at DESC", args)
+
+
+def _public_review(r):
+    """What a reader sees. A first name, a degree and a year — enough to judge
+    whether the reviewer is like you, not enough to find them."""
+    return {"id": r["id"], "rating": r["rating"], "body": r["body"],
+            "business_id": r["business_id"], "business_name": r["business_name"],
+            "author": (r["student_name"] or "").split(" ")[0],
+            "degree": r["degree"], "year": r["year"],
+            "when": time.strftime("%d %b %Y", time.localtime(r["created_at"]))}
+
+
+def list_reviews(ctx, body):
+    """Published reviews for one venue, plus whether the caller may add one."""
+    try:
+        bid = int(body.get("business_id"))
+    except (TypeError, ValueError):
+        raise ApiError("Which venue?")
+    rows = _review_rows("r.status='published' AND r.business_id=?", (bid,))
+    out = [_public_review(r) for r in rows]
+    avg = round(sum(r["rating"] for r in rows) / len(rows), 1) if rows else None
+
+    can, why, mine = False, "", None
+    sub = ctx.get("subject")
+    if sub and sub["type"] == "student":
+        own = db.q("SELECT id, rating, body, status FROM reviews "
+                   "WHERE business_id=? AND student_id=?", (bid, sub["id"]), one=True)
+        if own:
+            mine = {"rating": own["rating"], "body": own["body"], "status": own["status"]}
+            why = "You have already reviewed this one."
+        elif _has_visited(sub["id"], bid):
+            can = True
+        else:
+            why = "Only students who have actually paid here can review it."
+    elif not sub:
+        why = "Verify your university email to review."
+
+    return {"reviews": out, "average": avg, "count": len(out),
+            "can_review": can, "why": why, "mine": mine}
+
+
+def _has_visited(student_id, business_id):
+    """The gate on reviews. Not "verified student" — "verified student who paid
+    here". It is the one thing a scraped review site cannot copy, and the whole
+    reason a price in Agora can be trusted."""
+    return bool(db.q("SELECT 1 FROM transactions WHERE student_id=? AND business_id=? "
+                     "AND status IN ('pending','completed') LIMIT 1",
+                     (student_id, business_id), one=True))
+
+
+def write_review(ctx, body):
+    sub = auth(ctx, "student")
+    try:
+        bid = int(body.get("business_id"))
+        rating = int(body.get("rating"))
+    except (TypeError, ValueError):
+        raise ApiError("Give a venue and a rating")
+    if not 1 <= rating <= 5:
+        raise ApiError("A rating runs from 1 to 5")
+    text = (body.get("body") or "").strip()
+    if len(text) < 15:
+        raise ApiError("Write a line or two — fifteen characters at least.")
+    if len(text) > 600:
+        raise ApiError("Keep it under 600 characters.")
+    if not db.q("SELECT 1 FROM businesses WHERE id=?", (bid,), one=True):
+        raise ApiError("No such venue")
+    if not _has_visited(sub["id"], bid):
+        raise ApiError("You can only review a place you have paid for here.")
+    if db.q("SELECT 1 FROM reviews WHERE business_id=? AND student_id=?",
+            (bid, sub["id"]), one=True):
+        raise ApiError("You have already reviewed this one.")
+    db.run("INSERT INTO reviews(business_id,student_id,rating,body,status,created_at) "
+           "VALUES(?,?,?,?,'pending',?)", (bid, sub["id"], rating, text, db.now()))
+    return {"ok": True, "status": "pending",
+            "message": "Thanks. A moderator reads it before it appears."}
+
+
+def top_picks(ctx, body):
+    """Earned, never bought. A business can pay to be promoted; it cannot pay
+    to be a top pick, because this comes only from moderated student reviews."""
+    rows = db.q(
+        "SELECT b.id AS business_id, b.name, b.zone, b.lat, b.lng, b.address, "
+        "COUNT(r.id) AS reviews, AVG(r.rating) AS avg_rating "
+        "FROM businesses b JOIN reviews r ON r.business_id=b.id AND r.status='published' "
+        "GROUP BY b.id HAVING COUNT(r.id) >= ? AND AVG(r.rating) >= ? "
+        "ORDER BY AVG(r.rating) DESC, COUNT(r.id) DESC",
+        (TOP_PICK_MIN_REVIEWS, TOP_PICK_MIN_AVG))
+    out = []
+    for b in rows:
+        cheapest = db.q("SELECT MIN(student_cents) c FROM offers "
+                        "WHERE active=1 AND business_id=?", (b["business_id"],), one=True)["c"]
+        leis = db.q("SELECT leisure FROM offers WHERE active=1 AND business_id=? "
+                    "ORDER BY student_cents LIMIT 1", (b["business_id"],), one=True)
+        b["avg_rating"] = round(b["avg_rating"], 1)
+        b["from_eur"] = money(cheapest) if cheapest is not None else None
+        b["leisure"] = (leis or {}).get("leisure", "")
+        b["leisure_en"] = leisure.LABEL_EN.get(b["leisure"], "")
+        last = _review_rows("r.status='published' AND r.business_id=?", (b["business_id"],))
+        b["quote"] = _public_review(last[0]) if last else None
+        out.append(b)
+    return {"picks": out, "min_reviews": TOP_PICK_MIN_REVIEWS, "min_avg": TOP_PICK_MIN_AVG}
+
+
+# --------------------------------------------------------- moderation queue
+
+def mod_queue(ctx, body):
+    auth(ctx, "moderator")
+    rows = _review_rows("r.status=?", (body.get("status") or "pending",))
+    # A moderator sees the whole name: they are accountable for the decision.
+    return {"reviews": [dict(r, when=time.strftime("%d %b %Y, %H:%M",
+                                                   time.localtime(r["created_at"])))
+                        for r in rows],
+            "counts": {k: db.q("SELECT COUNT(*) n FROM reviews WHERE status=?",
+                               (k,), one=True)["n"]
+                       for k in ("pending", "published", "rejected")}}
+
+
+def mod_decide(ctx, body):
+    auth(ctx, "moderator")
+    decision = body.get("decision")
+    if decision not in ("published", "rejected"):
+        raise ApiError("Publish it or reject it")
+    try:
+        rid = int(body.get("review_id"))
+    except (TypeError, ValueError):
+        raise ApiError("Which review?")
+    row = db.q("SELECT status FROM reviews WHERE id=?", (rid,), one=True)
+    if not row:
+        raise ApiError("No such review")
+    db.run("UPDATE reviews SET status=?, moderated_by=?, moderated_at=? WHERE id=?",
+           (decision, ctx["subject"].get("email", "moderator"), db.now(), rid))
+    return {"ok": True, "status": decision}
 
 
 # ------------------------------------------------- student: transactions
@@ -913,6 +1079,11 @@ ROUTES = {
     ("GET",  "/api/offers"): list_offers,
     ("GET",  "/api/map"): map_pins,
     ("GET",  "/api/university"): university,
+    ("GET",  "/api/reviews"): list_reviews,
+    ("POST", "/api/reviews"): write_review,
+    ("GET",  "/api/top-picks"): top_picks,
+    ("GET",  "/api/mod/reviews"): mod_queue,
+    ("POST", "/api/mod/decide"): mod_decide,
     ("GET",  "/api/events"): list_events,
     ("GET",  "/api/jobs"): list_jobs,
     ("POST", "/api/offers/claim"): claim_offer,
