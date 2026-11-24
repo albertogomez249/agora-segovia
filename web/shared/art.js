@@ -87,8 +87,49 @@ const PATTERNS = [
   },
 ];
 
-/* A plate for a name. `seedExtra` lets two things at the same venue differ. */
+/* ---------------------------------------------------------------- photos
+   The generated plates were always meant to be the floor, not the ceiling:
+   something better than placeholder grey for a venue nobody has photographed.
+   Six testers asked for pictures of the places, which was the most repeated
+   request about the catalogue, so a real photograph now wins wherever one
+   exists and the pattern stays underneath it — as the colour behind a photo
+   that is still loading, and as the fallback for everything not yet shot.
+
+   The index comes from /api/photos, which is simply a listing of web/photos,
+   so adding a photograph means adding a file. See that folder's README. */
+let PHOTOS = {};
+async function loadPhotos() {
+  try {
+    const r = await fetch('/api/photos');
+    PHOTOS = (await r.json()).photos || {};
+  } catch (e) { PHOTOS = {}; }
+}
+
+/* "Mesón de Cándido" -> "meson-de-candido". The filename a photographer has to
+   type, derived from the name they already know. */
+function slug(name) {
+  return (name || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // strip accents
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+const photoFor = name => PHOTOS[slug(name)] || null;
+
+/* A plate for a name. `seedExtra` lets two things at the same venue differ.
+   A photograph, where there is one, drawn over the plate so the frame is never
+   empty and a file that fails to load degrades to the pattern instead of to a
+   broken image. */
 function plate(name, seedExtra) {
+  const pat = patternSVG(name, seedExtra);
+  const src = photoFor(name);
+  if (!src) return pat;
+  return `<span class="plate-ph">${pat}
+    <img src="${src}" alt="" loading="lazy" decoding="async"
+         onload="this.classList.add('on')"
+         onerror="this.remove()"></span>`;
+}
+
+function patternSVG(name, seedExtra) {
   const h = hash32((name || 'Ágora') + (seedExtra || ''));
   const p = PALETTES[h % PALETTES.length];
   const pat = PATTERNS[(h >> 3) % PATTERNS.length];
@@ -109,17 +150,24 @@ function plateDefs() {
     </linearGradient></defs></svg>`;
 }
 
-/* The initial, set in the Roman capital, over the venue's own pattern. */
+/* The initial, set in the Roman capital, over the venue's own pattern \u2014 or the
+   venue's photograph, where one exists. This is the small square on every list
+   row, so it is the first place a real picture earns its keep. */
 function monogram(name) {
   const h = hash32(name || 'A');
   const p = PALETTES[h % PALETTES.length];
   const raw = (name || 'A').replace(/^(the|bar|caf\u00e9|cafe|el|la|los|las)\s+/i, '').trim();
   const letter = (raw[0] || 'A').toUpperCase();
-  return `<svg viewBox="0 0 100 64" preserveAspectRatio="xMidYMid slice" aria-hidden="true"
+  const mark = `<svg viewBox="0 0 100 64" preserveAspectRatio="xMidYMid slice" aria-hidden="true"
     style="width:100%;height:100%;display:block">
     <rect width="100" height="64" fill="${p.bg}"/>
     <g opacity=".3">${PATTERNS[(h >> 3) % PATTERNS.length](p)}</g>
     <text x="50" y="43" text-anchor="middle" font-family="Marcellus,Georgia,serif"
       font-size="34" fill="${p.fg}">${letter}</text>
   </svg>`;
+  const src = photoFor(name);
+  if (!src) return mark;
+  return `<span class="plate-ph">${mark}
+    <img src="${src}" alt="" loading="lazy" decoding="async"
+         onload="this.classList.add('on')" onerror="this.remove()"></span>`;
 }

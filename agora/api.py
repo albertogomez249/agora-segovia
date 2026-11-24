@@ -61,9 +61,17 @@ FRESH_DAYS = 14
 
 
 def _uses(ref_type, ref_id):
+    """How many students have used this — but only once that is a crowd.
+
+    Same reason as MIN_COHORT below, and the same number. "3 students used this"
+    on a listing in a city with two campuses is close to naming them, and we
+    promise on the website that we never show a group under five. Enforced here
+    so no screen can forget it: under the threshold the count is simply absent.
+    """
     r = db.q("SELECT COUNT(*) n FROM transactions WHERE ref_type=? AND ref_id=? "
              "AND status='completed'", (ref_type, ref_id), one=True)
-    return r["n"] if r else 0
+    n = r["n"] if r else 0
+    return n if n >= MIN_COHORT else 0
 
 
 def decorate_offer(o):
@@ -77,6 +85,12 @@ def decorate_offer(o):
     o["left"] = max(o["stock"] - o["claimed"], 0) if o["stock"] else None
     o["leisure_en"] = leisure.LABEL_EN.get(o.get("leisure"), "")
     o["leisure_es"] = leisure.LABEL_ES.get(o.get("leisure"), "")
+    # A percentage off a basket has no single price, so the number stored
+    # alongside it is an example of a typical spend, not the price. Showing it
+    # as the price produced "15% in participating shops — €25.50", which a
+    # tester flagged as incoherent, and she was right: it reads as two different
+    # offers. Flagged here so every screen labels it the same way.
+    o["price_is_example"] = o["kind"] == "percent"
     return o
 
 
@@ -243,7 +257,11 @@ def list_offers(ctx, body):
 
 
 def list_events(ctx, body):
-    where, args = ["e.active=1"], []
+    # Past events were still being listed here while the map already dropped
+    # them, so a venue could show a pin whose event had gone and a sheet whose
+    # event was still for sale. One rule, in one place: if it has happened, it
+    # is not on sale.
+    where, args = ["e.active=1", "e.starts_at>=?"], [db.now()]
     if body.get("category"):
         where.append("e.category=?"); args.append(body["category"])
     leis = leisure.valid(body.get("leisure", ""))
@@ -303,7 +321,11 @@ def university(ctx, body):
         "JOIN businesses b ON b.id=t.business_id "
         "WHERE " + cond + " GROUP BY b.id "
         "HAVING COUNT(DISTINCT t.student_id) >= ? "
-        "ORDER BY buys DESC, people DESC LIMIT 8", args + [2])
+        # Was 2, while the website promised we never show a group under five.
+        # A tester read both and caught it: Campus showed "3 students" at Pádel
+        # Segovia and "4 students" at the cinema. The promise is the stricter of
+        # the two, so the promise wins and the number comes from one constant.
+        "ORDER BY buys DESC, people DESC LIMIT 8", args + [MIN_COHORT])
     for r in popular:
         r["saved_eur"] = money(r["saved_cents"] or 0)
 
@@ -330,7 +352,7 @@ def map_pins(ctx, body):
     """
     leis = leisure.valid(body.get("leisure", ""))
     pins = []
-    for b in db.q("SELECT id,name,category,zone,address,lat,lng,real_name "
+    for b in db.q("SELECT id,name,category,zone,address,lat,lng,real_name,hours "
                   "FROM businesses WHERE lat IS NOT NULL AND lng IS NOT NULL"):
         oargs = [b["id"]]
         osql = "SELECT leisure,student_cents,list_cents,title_en,title_es FROM offers " \
@@ -355,6 +377,13 @@ def map_pins(ctx, body):
         kinds = [(o["student_cents"], o["leisure"]) for o in offers] + \
                 [(e["student_cents"], e["leisure"]) for e in events]
         kinds.sort()
+        # "€5 for what?" — five testers asked it in the same session, and they
+        # were right: a number floating over a rooftop is not an offer. The pin
+        # now carries what the cheapest thing is and what it normally costs, so
+        # the price has an object before anyone taps it.
+        cheapest_item = min(
+            [(o["student_cents"], o["list_cents"], o["title_en"]) for o in offers] +
+            [(e["student_cents"], e["list_cents"], e["title_en"]) for e in events])
         pins.append({
             "business_id": b["id"], "name": b["name"], "zone": b["zone"],
             "address": b["address"], "lat": b["lat"], "lng": b["lng"],
@@ -364,10 +393,100 @@ def map_pins(ctx, body):
             "leisure_es": leisure.LABEL_ES.get(kinds[0][1], ""),
             "offers": len(offers), "events": len(events),
             "from_eur": money(cheapest),
+            "from_what": cheapest_item[2].split(" - ")[0],
+            "from_list_eur": money(cheapest_item[1]),
+            "best_pct": max(
+                [int(round(100 - (o["student_cents"] * 100.0 / max(o["list_cents"], 1))))
+                 for o in offers] +
+                [int(round(100 - (e["student_cents"] * 100.0 / max(e["list_cents"], 1))))
+                 for e in events]),
+            "hours": b["hours"],
         })
     pins.sort(key=lambda p: (p["leisure"], p["name"]))
     return {"pins": pins, "categories": leisure.as_json(),
             "centre": {"lat": 40.9481, "lng": -4.1184}}
+
+
+PHOTO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         "web", "photos")
+PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp", ".avif")
+
+
+def photos(ctx, body):
+    """Which venue photographs actually exist on disk.
+
+    Six testers asked for pictures of the places — it was the most repeated
+    request about the catalogue, and the app draws a generated pattern instead.
+    Rather than a database column nobody remembers to fill, the index is the
+    folder: drop `meson-de-candido.jpg` into web/photos and the venue has a
+    photograph. The app asks once, and falls back to the pattern for anything
+    not in here, so a missing photo is never a broken image.
+
+    See web/photos/README.md for the naming rule and the shot list.
+    """
+    out = {}
+    try:
+        names = sorted(os.listdir(PHOTO_DIR))
+    except OSError:
+        return {"photos": {}}
+    for n in names:
+        stem, ext = os.path.splitext(n)
+        if ext.lower() in PHOTO_EXT and not n.startswith("."):
+            out.setdefault(stem.lower(), "/photos/" + n)
+    return {"photos": out}
+
+
+def venue(ctx, body):
+    """Everything one venue holds, in one call.
+
+    Testing on 23 November, thirteen students out of forty-six opened a pin and
+    reported the same thing: "I clicked and all I got was reviews". The cause was
+    here. The app had no venue endpoint, so tapping a pin fetched every offer and
+    every event in Segovia and filtered them in the browser; until both lists
+    landed the sheet showed a skeleton, and the reviews — a third, smaller call —
+    often painted first. What the venue sells arrived last, or, when a venue's
+    only event had already passed, never.
+
+    So: one call, one venue, and the thing it sells comes back with it. The offer
+    carries what the price actually buys, because "€5" with no object was the
+    second most reported problem on the same day.
+    """
+    try:
+        bid = int(body.get("business_id"))
+    except (TypeError, ValueError):
+        raise ApiError("Which venue?")
+    b = db.q("SELECT id,name,category,zone,address,lat,lng,real_name,hours,"
+             "description_en,description_es FROM businesses WHERE id=?", (bid,), one=True)
+    if not b:
+        raise ApiError("No such venue", 404)
+
+    # The venue's own name and address travel with its offers: an offer sheet
+    # opened from here is the same sheet as one opened from the Buy screen, and
+    # it should not lose its heading on the way.
+    offers = [decorate_offer(o) for o in db.q(
+        "SELECT o.*, b.name AS business_name, b.zone, b.address, b.lat, b.lng, b.real_name "
+        "FROM offers o JOIN businesses b ON b.id=o.business_id "
+        "WHERE o.active=1 AND o.business_id=? ORDER BY o.student_cents ASC", (bid,))]
+    events = [decorate_event(e) for e in db.q(
+        "SELECT e.*, b.name AS business_name, b.zone, b.address, b.lat, b.lng, b.real_name "
+        "FROM events e JOIN businesses b ON b.id=e.business_id "
+        "WHERE e.active=1 AND e.business_id=? AND e.starts_at>=? "
+        "ORDER BY e.starts_at ASC", (bid, db.now()))]
+
+    rows = _review_rows("r.status='published' AND r.business_id=?", (bid,))
+    avg = round(sum(r["rating"] for r in rows) / len(rows), 1) if rows else None
+
+    return {
+        "venue": {
+            "business_id": b["id"], "name": b["name"], "zone": b["zone"],
+            "address": b["address"], "lat": b["lat"], "lng": b["lng"],
+            "hours": b["hours"], "real_name": bool(b["real_name"]),
+            "description_en": b["description_en"], "description_es": b["description_es"],
+        },
+        "offers": offers,
+        "events": events,
+        "rating": {"average": avg, "count": len(rows)},
+    }
 
 
 def list_jobs(ctx, body):
@@ -541,25 +660,42 @@ def claim_offer(ctx, body):
         raise ApiError("That offer is no longer available")
     if o["stock"] and o["claimed"] >= o["stock"]:
         raise ApiError("Sold out")
+
+    # A percentage comes off whatever the student actually spends, which nobody
+    # knows until they are at the till. Charging the stored example up front was
+    # both wrong and the thing testers objected to most: three of them said they
+    # would rather show a code than move money through us at all. So a percent
+    # offer issues a code and takes nothing — the till applies the discount.
+    pay_here = o["kind"] != "percent"
+
     st = db.q("SELECT * FROM students WHERE id=?", (sub["id"],), one=True)
-    if st["wallet_cents"] < o["student_cents"]:
+    if pay_here and st["wallet_cents"] < o["student_cents"]:
         raise ApiError("Not enough balance in your wallet. Top it up first.")
     code = db.code6()
-    commission = int(round(o["student_cents"] * COMMISSION_PCT / 100.0))
-    saved = o["list_cents"] - o["student_cents"]
-    db.runmany([
+    paid = o["student_cents"] if pay_here else 0
+    commission = int(round(paid * COMMISSION_PCT / 100.0))
+    saved = (o["list_cents"] - o["student_cents"]) if pay_here else 0
+    writes = [
         ("INSERT INTO transactions(student_id,business_id,ref_type,ref_id,list_cents,paid_cents,"
          "saved_cents,commission_cents,platform_fee_cents,code,status,created_at) "
          "VALUES(?,?,'offer',?,?,?,?,?,0,?,'pending',?)",
-         (sub["id"], o["bid"], o["id"], o["list_cents"], o["student_cents"], saved, commission,
-          code, db.now())),
+         (sub["id"], o["bid"], o["id"], o["list_cents"] if pay_here else 0, paid, saved,
+          commission, code, db.now())),
         ("UPDATE offers SET claimed=claimed+1 WHERE id=?", (o["id"],)),
-        ("UPDATE students SET wallet_cents=wallet_cents-? WHERE id=?", (o["student_cents"], sub["id"])),
-    ])
+    ]
+    if pay_here:
+        writes.append(("UPDATE students SET wallet_cents=wallet_cents-? WHERE id=?",
+                       (o["student_cents"], sub["id"])))
+    db.runmany(writes)
     tx = db.q("SELECT id FROM transactions WHERE code=?", (code,), one=True)["id"]
-    return {"transaction_id": tx, "code": code, "paid_eur": money(o["student_cents"]),
-            "saved_eur": money(saved),
-            "message": "Show this code at the till. The venue confirms it and the money is released."}
+    if pay_here:
+        msg = "Show this code at the till. The venue confirms it and the money is released."
+    else:
+        pct = int(round(100 - (o["student_cents"] * 100.0 / max(o["list_cents"], 1))))
+        msg = ("Show this code at the till. The %d%% comes off what you actually spend — "
+               "nothing has been charged." % pct)
+    return {"transaction_id": tx, "code": code, "paid_eur": money(paid),
+            "saved_eur": money(saved), "pay_here": pay_here, "message": msg}
 
 
 def buy_ticket(ctx, body):
@@ -1078,6 +1214,8 @@ ROUTES = {
     ("GET",  "/api/me"): me,
     ("GET",  "/api/offers"): list_offers,
     ("GET",  "/api/map"): map_pins,
+    ("GET",  "/api/venue"): venue,
+    ("GET",  "/api/photos"): photos,
     ("GET",  "/api/university"): university,
     ("GET",  "/api/reviews"): list_reviews,
     ("POST", "/api/reviews"): write_review,

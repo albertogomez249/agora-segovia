@@ -13,12 +13,17 @@
 <link rel="stylesheet" href="/shared/theme.css">
 <style>
   body{background:#C9BFAC;display:flex;justify-content:center;overflow:hidden}
+  /* 100vh on iPad and iOS Safari means the viewport with the browser chrome
+     hidden, so the bottom of the app sat underneath the toolbar: a tester
+     reported the tab bar covered, and another that it would not work on an iPad
+     at all. dvh is the height actually available, with vh left as the fallback
+     for browsers that do not know it. */
   #device{
-    width:min(100%,440px);height:100vh;background:var(--stone-01);
+    width:min(100%,440px);height:100vh;height:100dvh;background:var(--stone-01);
     display:flex;flex-direction:column;position:relative;overflow:hidden;
   }
-  @media(min-width:460px){#device{height:min(100vh,940px);margin:auto;border-radius:22px;
-    box-shadow:0 30px 90px rgba(21,24,28,.28)}}
+  @media(min-width:460px){#device{height:min(100vh,940px);height:min(100dvh,940px);margin:auto;
+    border-radius:22px;box-shadow:0 30px 90px rgba(21,24,28,.28)}}
 
   /* ---------------------------------------------------------- brand bar */
   .brandbar{
@@ -89,6 +94,13 @@
   .sheet-x{position:absolute;top:12px;right:16px;width:32px;height:32px;border-radius:50%;
     background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
   .sheet-x svg{width:15px;height:15px}
+  /* Opening hours under the venue name. The icon is set explicitly because an
+     inline SVG with no size of its own expands to fill the paragraph. */
+  .vhours{margin:6px 0 0;display:flex;gap:6px;align-items:center}
+  .vhours svg{width:14px;height:14px;flex:0 0 14px;opacity:.7}
+  .sheet-back{position:absolute;top:12px;left:16px;width:32px;height:32px;border-radius:50%;
+    background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
+  .sheet-back svg{width:16px;height:16px}
 
   /* --------------------------------------------------------- price block */
   .ledger{border-top:1px solid var(--line);margin:22px 0 0}
@@ -272,6 +284,16 @@
   .pin .d svg{width:11px;height:11px;stroke-width:2}
   .pin.sel .b{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
   .pin.sel .b::after{background:var(--ink-00);border-color:var(--ink-00)}
+  /* A price with no object is not an offer. The pin carries what it buys on a
+     second line, clipped so a long title cannot cover half the city. */
+  .pin .w{display:none}
+  #map.show-what .pin .w{
+    display:block;max-width:116px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+    transform:translate(-50%,-100%);margin-top:-2px;text-align:center;
+    font-size:10px;font-weight:600;letter-spacing:.01em;color:var(--ink-01);
+    text-shadow:0 1px 0 var(--stone-00),0 0 4px var(--stone-00),0 0 8px var(--stone-00);
+    pointer-events:none;
+  }
 
   .maplist{padding:18px 20px 0}
   .maplist .lead-in{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 12px}

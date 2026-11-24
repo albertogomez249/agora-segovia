@@ -86,6 +86,25 @@ VENUES = [
      ["menú", "tradicional"]),
 ]
 
+# Opening hours, by venue email. Kept apart from VENUES so the tuples above stay
+# readable. Testers asked "open when?" before they asked anything else about a
+# venue, and a discount you cannot turn up for is not a discount. Indicative for
+# the prototype, like every other figure here.
+HOURS = {
+    "info@mesondecandido.es": "Every day · 13:00–16:30, 20:00–23:00",
+    "reservas@restaurantejosemaria.com": "Every day · 13:00–16:00, 20:30–23:30",
+    "hola@mesonduque.es": "Every day · 12:30–16:30, 20:00–23:00",
+    "tienda@limonymenta.es": "Mon–Sat 09:00–21:00 · Sun 09:00–15:00",
+    "taquilla@teatrojuanbravo.org": "Box office Tue–Sat 18:00–21:00 · shows from 20:00",
+    "segovia@artesiete.es": "Every day · first screening 16:00, last 22:30",
+    "info@luzdecastilla.es": "Mon–Sat 10:00–22:00 · Sun 11:00–21:00",
+    "alcazar@patrimoniosegovia.es": "Every day · 10:00–19:00 (18:00 in winter)",
+    "pistas@padelsegovia.es": "Every day · 08:00–23:00",
+    "taquilla@gimnasticasegoviana.com": "Home league days · gates two hours before kick-off",
+    "sala@zibasegovia.es": "Thu–Sat · 00:30–06:00",
+    "hola@lacasadelsiglo.es": "Tue–Sun · 13:30–16:00, 20:30–23:00 · closed Mondays",
+}
+
 # venue index, leisure category, kind, title es/en, detail, list, student, stock, window
 OFFERS = [
     (0, "restaurants", "fixed", "Cochinillo para dos, precio estudiante", "Suckling pig for two, student price",
@@ -104,8 +123,11 @@ OFFERS = [
      2200, 900, 30, "Toda la programación"),
     (5, "cinema", "twofor", "2x1 de martes a jueves", "2-for-1, Tuesday to Thursday",
      "Dos entradas al precio de una.", "Two tickets for the price of one.", 1700, 850, 40, "Mar–Jue"),
-    (6, "products", "percent", "15% en comercios adheridos", "15% in participating shops",
-     "Enseña el pase en caja.", "Show your pass at the till.", 3000, 2550, 0, ""),
+    (6, "products", "percent", "15% en los comercios adheridos del centro comercial",
+     "15% at the participating shops in the centre",
+     "Enseña el código en caja. El precio que ves es un ejemplo sobre una compra de 30 €.",
+     "Show your code at the till. The price shown is an example on a €30 basket.",
+     3000, 2550, 0, ""),
     (7, "products", "fixed", "Entrada estudiante al Alcázar", "Student entry to the Alcázar",
      "Incluye palacio y Torre de Juan II.", "Palace and the Tower of John II included.",
      900, 500, 0, ""),
@@ -234,9 +256,10 @@ def run():
     for email, name, cat, zone, addr, lat, lng, des, den, tags in VENUES:
         bids.append(db.run(
             "INSERT INTO businesses(email,name,category,zone,address,description_en,description_es,"
-            "tags,premium,profile_complete,verified,lat,lng,real_name,created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,1,1,1,?,?,1,?)",
-            (email, name, cat, zone, addr, den, des, json.dumps(tags), lat, lng, now)))
+            "tags,premium,profile_complete,verified,lat,lng,real_name,hours,created_at) "
+            "VALUES(?,?,?,?,?,?,?,?,1,1,1,?,?,1,?,?)",
+            (email, name, cat, zone, addr, den, des, json.dumps(tags), lat, lng,
+             HOURS.get(email, ""), now)))
         db.run("INSERT OR IGNORE INTO assistant_state(business_id) VALUES(?)", (bids[-1],))
 
     for bi, leis, kind, tes, ten, des, den, lc, sc, stock, win in OFFERS:

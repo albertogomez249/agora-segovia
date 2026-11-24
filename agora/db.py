@@ -184,6 +184,9 @@ MIGRATIONS = [
     ("businesses", "lat", "REAL"),
     ("businesses", "lng", "REAL"),
     ("businesses", "real_name", "INTEGER NOT NULL DEFAULT 0"),
+    # Testers opened a pin and asked "open when?" before anything else. Opening
+    # hours are part of the offer, not metadata about it.
+    ("businesses", "hours", "TEXT NOT NULL DEFAULT ''"),
     ("offers", "leisure", "TEXT NOT NULL DEFAULT ''"),
     ("events", "leisure", "TEXT NOT NULL DEFAULT ''"),
 ]

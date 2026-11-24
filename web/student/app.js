@@ -103,18 +103,28 @@ function purse() { $('#purseVal').textContent = ME ? money(ME.wallet_eur) : 'Sig
 $('#purse').onclick = () => ME ? walletSheet()
   : askToVerify('Verify once with your university email.<br><b>You keep a wallet, a card, and every euro you save.</b>');
 
-/* ----------------------------------------------------------------- sheet */
-function sheet(inner, footer) {
+/* ----------------------------------------------------------------- sheet
+   A sheet can open on top of another one — a venue, then one of its offers —
+   and until now the only way out of the second was the close button, which
+   dropped you all the way back to the map. Two testers reported it, one of them
+   as "I couldn't go back to the home page unless I refreshed". So a sheet that
+   was opened from somewhere carries the way back to it, and Escape works. */
+function sheet(inner, footer, back) {
   $('#sheet').innerHTML =
+    (back ? `<button class="sheet-back" id="sb" aria-label="Back">${ICON.back}</button>` : '') +
     `<button class="sheet-x" id="sx" aria-label="Close">${ICON.close}</button>
      <div class="grab"><i></i></div>
      <div class="scrollable">${inner}</div>
      ${footer ? `<div class="foot">${footer}</div>` : '<div style="height:22px"></div>'}`;
   $('#sheet').classList.add('on'); $('#scrim').classList.add('on');
   $('#sx').onclick = shut;
+  if (back) $('#sb').onclick = back;
 }
 function shut() { $('#sheet').classList.remove('on'); $('#scrim').classList.remove('on'); }
 $('#scrim').onclick = shut;
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('#sheet').classList.contains('on')) shut();
+});
 
 const skeleton = n => '<div class="rows">' + Array.from({ length: n }, () => `
   <div class="row-item"><div class="lead sk"></div><div class="body">
@@ -156,19 +166,29 @@ const wireGuest = (why) => {
   const b = $('#gstrip'); if (b) b.onclick = () => askToVerify(why);
 };
 
+/* Every screen fetches before it paints, and a slow tab used to finish painting
+   after you had already moved on: a tester reported tapping Campus and getting
+   Go out. Each render takes a ticket, and a render whose ticket is stale throws
+   its output away instead of writing over the screen you are actually looking
+   at. RENDER is also what the screens check before touching the DOM. */
+let RENDER = 0;
 async function render() {
   const v = $('#view');
+  const turn = ++RENDER;
   v.classList.toggle('is-map', TAB === 'map');
   if (TAB !== 'map') { MAP = null; MARKS = []; }
   v.innerHTML = TAB === 'map' ? '' : head('·', '', '') + skeleton(5);
   try {
-    if (TAB === 'map') return mapScreen(v);
-    if (TAB === 'buy') return listScreen(v, 'buy');
-    if (TAB === 'out') return listScreen(v, 'out');
-    if (TAB === 'campus') return campus(v);
-    return card(v);
-  } catch (e) { v.innerHTML = emptyState('close', 'We could not load this', e.message); }
+    if (TAB === 'map') return await mapScreen(v, turn);
+    if (TAB === 'buy') return await listScreen(v, 'buy', turn);
+    if (TAB === 'out') return await listScreen(v, 'out', turn);
+    if (TAB === 'campus') return await campus(v, turn);
+    return await card(v, turn);
+  } catch (e) {
+    if (turn === RENDER) v.innerHTML = emptyState('close', 'We could not load this', e.message);
+  }
 }
+const stale = turn => turn !== undefined && turn !== RENDER;
 
 
 /* ------------------------------------------------------- I · the map
@@ -184,7 +204,7 @@ const chiprow = (sel, cats, attr) =>
         aria-pressed="${sel === c.key}">${c.en}</button>`).join('')}
    </div>`;
 
-async function mapScreen(v) {
+async function mapScreen(v, turn) {
   const sel = PREF.leisure || '';
   v.innerHTML = `
     <div class="mapstage">
@@ -194,6 +214,7 @@ async function mapScreen(v) {
     <div class="maplist" id="maplist">${skeleton(4)}</div>`;
 
   const data = await Agora.get('/api/map', sel ? { leisure: sel } : {});
+  if (stale(turn)) return;
   CATS = data.categories || CATS;
   $('#mapchips').innerHTML = chiprow(sel, CATS, 'c');
   $('#mapchips').querySelectorAll('[data-c]').forEach(b => b.onclick = () => {
@@ -237,6 +258,32 @@ async function paintTopPicks(pins) {
   });
 }
 
+/* Pins closer together than they are wide cannot both be tapped, so any cluster
+   within about 40 metres is fanned onto a small circle around its own centre.
+   The venue a pin belongs to does not move — only the marker does, far enough
+   to be pressed and not far enough to point at the wrong street. */
+function fanOut(pins) {
+  const EPS = 0.00045;                       // ~40 m at this latitude
+  const out = pins.map(p => [p.lat, p.lng]);
+  const done = new Set();
+  pins.forEach((p, i) => {
+    if (done.has(i)) return;
+    const group = [i];
+    for (let j = i + 1; j < pins.length; j++) {
+      if (done.has(j)) continue;
+      if (Math.abs(pins[j].lat - p.lat) < EPS && Math.abs(pins[j].lng - p.lng) < EPS) group.push(j);
+    }
+    group.forEach(k => done.add(k));
+    if (group.length === 1) return;
+    const r = EPS * 0.8;
+    group.forEach((k, n) => {
+      const a = (2 * Math.PI * n) / group.length;
+      out[k] = [p.lat + r * Math.sin(a) * 0.62, p.lng + r * Math.cos(a)];
+    });
+  });
+  return out;
+}
+
 function drawMap(pins, centre) {
   const host = $('#map');
   if (!host) return;
@@ -268,30 +315,81 @@ function drawMap(pins, centre) {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(MAP);
 
-  MARKS = pins.map(p => {
-    const m = L.marker([p.lat, p.lng], {
+  // Venues in the old town sit within a few metres of each other, and their
+  // pins landed on top of one another: two testers reported markers in the
+  // centre they simply could not tap. Pins that collide are fanned out around
+  // the point they share, so every one of them has its own thumb-sized target.
+  const spread = fanOut(pins);
+
+  MARKS = pins.map((p, i) => {
+    const m = L.marker(spread[i], {
       icon: L.divIcon({
         className: 'pin', iconSize: null,
+        // "€5 for what?" was the second most reported problem of the session.
+        // The pin now says the thing, not just the number.
         html: `<span class="b"><span class="d" style="background:${catColour(p.leisure)}">
-                 ${catIcon(p.leisure)}</span>${money(p.from_eur)}</span>`,
+                 ${catIcon(p.leisure)}</span><span class="pr">${money(p.from_eur)}</span>
+               </span><span class="w">${esc(p.from_what || '')}</span>`,
       }),
+      zIndexOffset: Math.round(1000 - (p.from_eur || 0)),
     }).addTo(MAP);
     m.on('click', () => venueSheet(p));
     return { id: p.business_id, m };
   });
-  if (pins.length) {
+  // The stage is sized in vh and the map is built before layout settles, so the
+  // fit has to happen after Leaflet has been told the real size. Fitting first
+  // and measuring second left the map zoomed into one street with every pin off
+  // screen — which is the same blank-rectangle failure the fallback above
+  // exists to prevent, only harder to notice.
+  const fit = () => {
+    if (!MAP) return;
+    MAP.invalidateSize();
+    if (!pins.length) return;
     // Asymmetric on purpose: the chips float over the top of the stage and a
     // pin tucked under them is a price nobody can read.
-    MAP.fitBounds(L.latLngBounds(pins.map(p => [p.lat, p.lng])),
-                  { paddingTopLeft: [34, 74], paddingBottomRight: [34, 40] });
-  }
-  // The stage is sized in vh and the map is built before layout settles.
-  setTimeout(() => MAP && MAP.invalidateSize(), 60);
+    MAP.fitBounds(L.latLngBounds(spread), {
+      paddingTopLeft: [40, 80], paddingBottomRight: [40, 44], maxZoom: 16,
+    });
+  };
+  setTimeout(fit, 60);
+  // Phones settle late: a second pass once the stage has its final height.
+  setTimeout(fit, 400);
+
+  // What the price buys only fits once the city has opened up. Zoomed out, a
+  // dozen captions overlap into noise and hide the prices underneath them, so
+  // below street zoom the pins carry the number alone and the words come back
+  // as soon as there is room for them.
+  const captions = () => host.classList.toggle('show-what', MAP.getZoom() >= 15);
+  MAP.on('zoomend', captions);
+  setTimeout(captions, 420);
 }
+
+/* The list under the map is not a leftover, it is the other half of the screen.
+   A tester asked for it in as many words: "I would also like a list view where I
+   can compare places more easily, especially by price, distance and type of
+   discount." Price and discount sort here; the zone does the work distance would
+   do, because the app has no permission to ask where you are standing. */
+const SORTS = [
+  ['price', 'Cheapest first'],
+  ['pct',   'Biggest discount'],
+  ['zone',  'By part of town'],
+  ['name',  'A–Z'],
+];
+const sortPins = (pins, how) => {
+  const c = [...pins];
+  if (how === 'pct') c.sort((a, b) => (b.best_pct || 0) - (a.best_pct || 0));
+  else if (how === 'zone') c.sort((a, b) => (a.zone || '').localeCompare(b.zone || '') ||
+                                            a.name.localeCompare(b.name));
+  else if (how === 'name') c.sort((a, b) => a.name.localeCompare(b.name));
+  else c.sort((a, b) => (a.from_eur || 0) - (b.from_eur || 0));
+  return c;
+};
 
 function paintMapList(pins, sel) {
   const box = $('#maplist');
   if (!box) return;
+  const how = PREF.sort || 'price';
+  const rows = sortPins(pins, how);
   const title = sel ? catLabel(sel) : 'Everywhere in Segovia';
   box.innerHTML =
     demoNote() +
@@ -299,21 +397,29 @@ function paintMapList(pins, sel) {
     '<div id="toppicks"></div>' +
     `<div class="lead-in"><div class="inscript dim">${esc(title.toUpperCase())}</div>
        <span class="t-meta">${pins.length} place${pins.length === 1 ? '' : 's'}</span></div>` +
+    (pins.length ? `<div class="filters" style="margin:0 0 4px;padding:0 0 14px">
+       <div class="chiprow">${SORTS.map(([k, l]) =>
+         `<button class="chip" data-s="${k}" aria-pressed="${how === k}">${l}</button>`).join('')}
+       </div></div>` : '') +
     (pins.length
-      ? `<div class="rows stagger">${pins.map((p, i) => `
+      ? `<div class="rows stagger">${rows.map((p, i) => `
           <button class="row-item" data-p="${p.business_id}" style="animation-delay:${i * 26}ms">
             <span class="lead">${monogram(p.name)}</span>
             <span class="body">
               <span class="ttl">${esc(p.name)}</span>
               <span class="sub">${esc(catLabel(p.leisure))} · ${esc(ZONE[p.zone] || p.zone)}</span>
-              <span class="sub cut">${p.offers ? p.offers + ' discount' + (p.offers === 1 ? '' : 's') : ''}${
-                p.offers && p.events ? ' · ' : ''}${p.events ? p.events + ' event' + (p.events === 1 ? '' : 's') : ''}</span>
+              <span class="sub cut">${esc(p.from_what || '')}${
+                p.best_pct ? ' · up to −' + p.best_pct + '%' : ''}</span>
+              ${p.hours ? `<span class="sub">${esc(p.hours)}</span>` : ''}
             </span>
             <span class="tail"><span class="t-meta">from</span><br>
               <span class="price">${money(p.from_eur)}</span></span>
           </button>`).join('')}</div>`
       : emptyState('pin', 'Nothing here yet', 'No venue in this category has a live price. Try another one.'));
   wireGuest('Verify once with your university email.<br><b>Then every price in Segovia is one tap away.</b>');
+  box.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+    PREF.sort = b.dataset.s; savePref(); paintMapList(pins, sel); paintTopPicks(pins);
+  });
   box.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
     const p = pins.find(x => x.business_id == b.dataset.p);
     if (MAP && p.lat != null) MAP.flyTo([p.lat, p.lng], 16, { duration: .5 });
@@ -322,44 +428,83 @@ function paintMapList(pins, sel) {
 }
 
 /* Everything one venue holds, in one sheet: the map pin and the list row both
-   land here, so a student never has to work out which screen a price lives on. */
+   land here, so a student never has to work out which screen a price lives on.
+
+   Rebuilt after the 23 November test. Thirteen of forty-six testers tapped a pin
+   and reported the same thing — "all I got was reviews". Three causes, all fixed
+   here: the sheet fetched every offer and every event in the city and filtered
+   them in the browser, so what the venue sells arrived last; reviews came from a
+   separate, smaller call that usually won the race; and nothing on the sheet
+   answered the two questions people actually had, which were what the price buys
+   and whether the place is open. Now: one call, the offer first, the address and
+   the hours under the name, and reviews at the bottom where they belong. */
 async function venueSheet(p) {
   sheet(`<div class="hero">${plate(p.name, 'b' + p.business_id)}
       <div class="cap"><div class="k">${esc(catLabel(p.leisure))}</div>
         <div class="n">${esc(p.name)}</div></div></div>
-    <p class="t-meta">${esc(p.address || '')}${p.zone ? ' · ' + esc(ZONE[p.zone] || p.zone) : ''}</p>
+    <div id="vfacts"></div>
     <div id="vbody" style="margin:16px 0 0">${skeleton(3)}</div>`);
-  const [{ offers }, { events }] = await Promise.all([
-    Agora.get('/api/offers', {}), Agora.get('/api/events', {})]);
-  const mine = offers.filter(o => o.business_id === p.business_id);
-  const evs = events.filter(e => e.business_id === p.business_id);
+
+  let d;
+  try { d = await Agora.get('/api/venue', { business_id: p.business_id }); }
+  catch (err) {
+    const box = $('#vbody');
+    if (box) box.innerHTML = emptyState('close', 'We could not load this venue', err.message);
+    return;
+  }
+  if (!$('#vbody')) return;           // the sheet was closed while we waited
+
+  const v = d.venue, mine = d.offers, evs = d.events;
+
+  // The facts a student standing in the street needs before anything else.
+  $('#vfacts').innerHTML = `
+    <p class="t-meta">${esc(v.address || '')}${v.zone ? ' · ' + esc(ZONE[v.zone] || v.zone) : ''}</p>
+    ${v.hours ? `<p class="t-meta vhours">${ICON.clock}<span>${esc(v.hours)}</span></p>` : ''}
+    ${d.rating.count ? `<p class="t-meta" style="margin:6px 0 0">
+      <span class="stars" style="color:var(--bronze)">${stars(Math.round(d.rating.average))}</span>
+      ${d.rating.average.toFixed(1)}/5 · ${d.rating.count} student review${d.rating.count === 1 ? '' : 's'}</p>` : ''}
+    ${v.description_en ? `<p class="t-body" style="margin:12px 0 0">${esc(v.description_en)}</p>` : ''}`;
+
   const box = $('#vbody');
-  if (!box) return;
   box.innerHTML =
-    (mine.length ? `<div class="inscript dim" style="margin:0 0 9px">DISCOUNTS</div>
+    (mine.length ? `<div class="inscript dim" style="margin:0 0 9px">WHAT YOU GET HERE</div>
       <div class="rows">${mine.map(o => `
         <button class="row-item" data-vo="${o.id}">
           <span class="body"><span class="ttl">${esc(o.title_en.replace(/ - .*$/, ''))}</span>
-            <span class="sub cut">${KIND[o.kind]} · −${o.discount_pct}%</span></span>
-          <span class="tail"><span class="price">${money(o.student_eur)}</span><br>
-            <span class="was">${money(o.list_eur)}</span></span>
+            <span class="sub">${esc(o.detail_en || '')}</span>
+            <span class="sub cut">${KIND[o.kind]} · −${o.discount_pct}%${
+              o.window_label ? ' · ' + esc(o.window_label) : ''}</span></span>
+          <span class="tail">${priceTail(o)}</span>
         </button>`).join('')}</div>` : '') +
     (evs.length ? `<div class="inscript dim" style="margin:20px 0 9px">WHAT IS ON</div>
       <div class="rows">${evs.map(e => `
         <button class="row-item" data-ve="${e.id}">
           <span class="body"><span class="ttl">${esc(e.title_en)}</span>
-            <span class="sub">${esc(e.when)}</span></span>
+            <span class="sub">${esc(e.when)}</span>
+            <span class="sub cut">${e.left} of ${e.capacity} left</span></span>
           <span class="tail"><span class="price">${money(e.student_eur)}</span><br>
             <span class="was">${money(e.list_eur)}</span></span>
         </button>`).join('')}</div>` : '') +
     (!mine.length && !evs.length
-      ? emptyState('pin', 'Nothing live here', 'This venue has no student price on sale today.') : '') +
+      ? emptyState('pin', 'Nothing live here today',
+          'This venue has no student price on sale right now. It stays on the map because it has had one before.') : '') +
     '<div id="vrev"></div>';
   box.querySelectorAll('[data-vo]').forEach(b => b.onclick = () =>
-    offer(mine.find(o => o.id == b.dataset.vo)));
+    offer(mine.find(o => o.id == b.dataset.vo), () => venueSheet(p)));
   box.querySelectorAll('[data-ve]').forEach(b => b.onclick = () =>
-    evSheet(evs.find(e => e.id == b.dataset.ve)));
+    evSheet(evs.find(e => e.id == b.dataset.ve), () => venueSheet(p)));
   paintReviews(p);
+}
+
+/* A percentage off a basket has no single price. Saying "€25.50" next to
+   "15% off" reads as two different offers — a tester said exactly that — so the
+   example is labelled as an example and the percentage carries the headline. */
+function priceTail(o) {
+  return o.price_is_example
+    ? `<span class="price">−${o.discount_pct}%</span><br>
+       <span class="t-meta">e.g. ${money(o.student_eur)} on ${money(o.list_eur)}</span>`
+    : `<span class="price">${money(o.student_eur)}</span><br>
+       <span class="was">${money(o.list_eur)}</span>`;
 }
 
 /* ------------------------------------------------------------- reviews
@@ -453,7 +598,7 @@ const ZONE = { centro: 'Old town', nueva: 'Nueva Segovia', sanlo: 'San Lorenzo',
    category, see a price, pay. "Buy" is the two things you take away with you,
    "Go out" the five you turn up to — and the only real difference is that
    going out has a date on it. */
-async function listScreen(v, group) {
+async function listScreen(v, group, turn) {
   const cats = catsIn(group);
   let sel = PREF['sel_' + group] || '';
   if (sel && !cats.some(c => c.key === sel)) sel = '';
@@ -464,6 +609,7 @@ async function listScreen(v, group) {
     group === 'out' ? Agora.get('/api/events', sel ? { leisure: sel } : {})
                     : Promise.resolve({ events: [] }),
   ]);
+  if (stale(turn)) return;
   const mine = offers.filter(o => want.includes(o.leisure));
   const events = (ev.events || []).filter(e => want.includes(e.leisure));
 
@@ -522,7 +668,8 @@ async function listScreen(v, group) {
   v.querySelectorAll('[data-e]').forEach(b => b.onclick = () => evSheet(events.find(e => e.id == b.dataset.e)));
 }
 
-function offer(o) {
+function offer(o, back) {
+  const pct = o.price_is_example;
   sheet(`
     <div class="hero">${plate(o.business_name, 'o' + o.id)}
       <div class="cap"><div class="k">${KIND[o.kind]}</div>
@@ -535,28 +682,39 @@ function offer(o) {
       ${o.fresh ? `<span class="badge badge--live">${ICON.check} checked this week</span>` : ''}
     </div>
     <div class="ledger">
-      <div class="ln"><span class="k">Normal price</span><span class="was" style="font-size:15px">${money(o.list_eur)}</span></div>
-      <div class="ln"><span class="k">You save</span><span style="color:var(--verd)">−${money(o.saved_eur)}</span></div>
-      <div class="ln total"><span class="k">Your price</span><span class="price lg">${money(o.student_eur)}</span></div>
+      ${pct
+        ? `<div class="ln"><span class="k">Your discount</span><span class="price lg">−${o.discount_pct}%</span></div>
+           <div class="ln"><span class="k">Example: a ${money(o.list_eur)} basket</span>
+             <span>${money(o.student_eur)}</span></div>
+           <div class="ln total"><span class="k">You would save</span>
+             <span style="color:var(--verd)">−${money(o.saved_eur)}</span></div>`
+        : `<div class="ln"><span class="k">Normal price</span><span class="was" style="font-size:15px">${money(o.list_eur)}</span></div>
+           <div class="ln"><span class="k">You save</span><span style="color:var(--verd)">−${money(o.saved_eur)}</span></div>
+           <div class="ln total"><span class="k">Your price</span><span class="price lg">${money(o.student_eur)}</span></div>`}
     </div>
-    <p class="t-meta" style="margin:16px 0 22px">Paid from your wallet now. The venue releases it when
-      they confirm your code, so you are never charged for a table you did not take.</p>`,
-    ME ? `<button class="btn btn--block" id="pay">Pay ${money(o.student_eur)}</button>`
-       : `<button class="btn btn--bronze btn--block" id="join">Verify to claim · ${money(o.student_eur)}</button>`);
+    <p class="t-meta" style="margin:16px 0 22px">${pct
+      ? 'A percentage comes off whatever you actually spend, so the figures above are an example, not the price. You show your code at the till and the discount is taken there.'
+      : 'Reserved now, paid at the till. You show six digits, the venue confirms them, and the discount is already in the price — so you are never charged for a table you did not take.'}</p>`,
+    ME ? `<button class="btn btn--block" id="pay">${pct ? 'Get my code' : 'Reserve · ' + money(o.student_eur)}</button>`
+       : `<button class="btn btn--bronze btn--block" id="join">Verify to claim${pct ? '' : ' · ' + money(o.student_eur)}</button>`,
+    back);
   if (!ME) {
     $('#join').onclick = () => { shut(); askToVerify(
       `<b>${esc(o.business_name)}</b> holds this price for verified students.<br>One email, once.`,
-      () => offer(o)); };
+      () => offer(o, back)); };
     return;
   }
   $('#pay').onclick = async e => {
-    busy(e.currentTarget, true, 'Paying');
+    busy(e.currentTarget, true, pct ? 'Getting your code' : 'Reserving');
     try {
       const r = await Agora.post('/api/offers/claim', { offer_id: o.id });
-      ME.wallet_eur = +(ME.wallet_eur - o.student_eur).toFixed(2); purse();
+      if (r.pay_here) {
+        ME.wallet_eur = +(ME.wallet_eur - o.student_eur).toFixed(2); purse();
+      }
       pass('Show this at the till', o.business_name, r.code,
-           `Paid ${money(r.paid_eur)} · saved ${money(r.saved_eur)}`,
-           `${esc(o.business_name)} confirms it on their side and the money is released.`);
+           r.pay_here ? `Paid ${money(r.paid_eur)} · saved ${money(r.saved_eur)}`
+                      : `−${o.discount_pct}% off whatever you spend`,
+           r.message || '');
     } catch (err) { busy(e.currentTarget, false); toast(err.message, true); }
   };
 }
@@ -585,7 +743,7 @@ function pass(title, venue, code, line, note) {
 const EV = { party: 'Party', theatre: 'Theatre', concert: 'Concert',
              sport_play: 'Play', sport_watch: 'Watch', tour: 'Walk' };
 
-function evSheet(e) {
+function evSheet(e, back) {
   sheet(`
     <div class="hero">${plate(e.title_en, 'e' + e.id)}
       <div class="cap"><div class="k">${EV[e.category] || e.category}</div>
@@ -600,11 +758,12 @@ function evSheet(e) {
     </div>
     <div style="height:22px"></div>`,
     ME ? `<button class="btn btn--block" id="buy">Buy ticket · ${money(e.student_eur)}</button>`
-       : `<button class="btn btn--bronze btn--block" id="join">Verify to buy · ${money(e.student_eur)}</button>`);
+       : `<button class="btn btn--bronze btn--block" id="join">Verify to buy · ${money(e.student_eur)}</button>`,
+    back);
   if (!ME) {
     $('#join').onclick = () => { shut(); askToVerify(
       `This seat is <b>${money(e.student_eur)}</b> for a verified student, ${money(e.list_eur)} at the door.`,
-      () => evSheet(e)); };
+      () => evSheet(e, back)); };
     return;
   }
   $('#buy').onclick = async ev => {
@@ -722,9 +881,10 @@ function teach() {
    quietly showing a blank. */
 const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
 
-async function campus(v) {
+async function campus(v, turn) {
   const sel = { university: PREF.uni || (ME ? ME.university : ''), degree: PREF.degree || '' };
   const d = await Agora.get('/api/university', sel);
+  if (stale(turn)) return;
   const unis = d.universities || [];
 
   // Built in pieces rather than one nested ternary: the version that read as
@@ -798,20 +958,47 @@ async function campus(v) {
 }
 
 /* --------------------------------------------------------------- V · card */
+/* The most uncomfortable screen in the test. One tester noticed that money was
+   added "when you click on an amount, without entering any bank details, which
+   is a problem" — in a prototype that is a missing payment step, but to anyone
+   using it, it is a wallet behaving in a way no wallet should. Three others said
+   plainly they would rather show a card than move money through us at all, and
+   asked the questions this screen never answered: who holds it, do I get unused
+   money back, what happens if a venue does not honour the price.
+   So: answer them, and stop pretending a demo credit is a payment. */
 function walletSheet() {
   sheet(`
     <div class="inscript" style="margin:4px 0 10px">Your wallet</div>
     <h2 class="t-title">${money(ME.wallet_eur)}</h2>
-    <p class="t-body" style="margin:12px 0 20px">Top up once, then pay anywhere in Segovia
-      without taking out a card.</p>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px">
-      ${[10, 25, 50].map(a => `<button class="btn btn--quiet" data-a="${a}">€${a}</button>`).join('')}
-    </div>`, '');
+    <p class="t-body" style="margin:12px 0 18px">You never need it for a discount: a percentage
+      comes off at the till and costs nothing here. The wallet is only for things you reserve
+      in advance — a ticket, a table, a court.</p>
+
+    <div class="ledger" style="margin-top:0">
+      <div class="ln"><span class="k">Who holds it</span><span>Ágora, until the venue confirms your code</span></div>
+      <div class="ln"><span class="k">Money you do not spend</span><span>Yours — withdraw any time</span></div>
+      <div class="ln"><span class="k">If a venue refuses the price</span><span>Refunded in full</span></div>
+      <div class="ln total"><span class="k">If you never turn up</span><span>Released back to you</span></div>
+    </div>
+
+    <div class="guest" style="margin:20px 0 0;background:var(--stone-02);color:var(--ink-02)">
+      <div class="t" style="font-size:12.5px;line-height:1.45">
+        <b style="color:var(--oxblood)">Demonstration.</b> The buttons below add pretend credit so
+        you can try a reservation. No card is asked for because no money moves — a real version
+        takes you to your bank.
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:16px">
+      ${[10, 25, 50].map(a => `<button class="btn btn--quiet" data-a="${a}">€${a} demo</button>`).join('')}
+    </div>
+    <div style="height:14px"></div>`, '');
   $('#sheet').querySelectorAll('[data-a]').forEach(b => b.onclick = async () => {
     busy(b, true);
     try {
       const r = await Agora.post('/api/wallet/topup', { amount_eur: +b.dataset.a });
-      ME.wallet_eur = r.wallet_eur; purse(); shut(); toast('Added ' + money(b.dataset.a));
+      ME.wallet_eur = r.wallet_eur; purse(); shut();
+      toast('Added ' + money(b.dataset.a) + ' of demo credit');
       if (TAB === 'me') render();
     } catch (e) { busy(b, false); toast(e.message, true); }
   });
@@ -834,7 +1021,7 @@ const membershipCard = (s) => `
     </div>
   </div>`;
 
-async function card(v) {
+async function card(v, turn) {
   if (!ME) {
     v.innerHTML = head('IV · YOUR·CARD', 'Your card', '') + `
       <div class="mcard" style="opacity:.55">
@@ -857,6 +1044,7 @@ async function card(v) {
     return;
   }
   const [{ student }, act] = await Promise.all([Agora.get('/api/me'), Agora.get('/api/my/activity')]);
+  if (stale(turn)) return;
   ME = student; purse();
   v.innerHTML =
     head('IV · YOUR·CARD', esc(student.name.split(' ')[0] + "'s card"), '') +
@@ -933,6 +1121,9 @@ function inviteSheet(s) {
 (async () => {
   const q = new URLSearchParams(location.search).get('invite');
   if (q) { PREF.invite = q.toUpperCase(); savePref(); }
+  // Which venues have a photograph, before the first screen is drawn — so a
+  // row never paints its pattern and then swaps to a picture under the thumb.
+  await loadPhotos();
   if (Agora.token) {
     try {
       const r = await Agora.get('/api/me');

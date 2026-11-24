@@ -95,6 +95,7 @@ const ICON = (() => {
       <path d="M6.4 8.8v6.4M17.6 8.8v6.4"/>`),
 
     back: w(`<path d="M14.6 5.4 8 12l6.6 6.6"/>`),
+    clock: w(`<circle cx="12" cy="12" r="8"/><path d="M12 7.6V12l3 2"/>`),
     close: w(`<path d="M6.4 6.4l11.2 11.2M17.6 6.4 6.4 17.6"/>`),
     check: w(`<path d="M5 12.4l4.6 4.6L19 6.6"/>`),
     chevron: w(`<path d="M9.4 5.6 15.8 12l-6.4 6.4"/>`),
