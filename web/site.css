@@ -148,12 +148,18 @@ footer.foot .mark{font-family:var(--display);font-size:17px;letter-spacing:.3em;
    barrier. The page is rightly in Spanish — it is for local venue owners — so
    the link says so before you click it, and the page opens with an English
    summary of the model for anyone who came to understand it rather than sign up. */
+/* The pill is always light, wherever it sits — so its text is always dark,
+   stated outright rather than taken from --ink-03. In the footer, which is a
+   dark surface, the token had flipped to the light grey meant for text ON ink
+   and the tag went to 1.36:1 on its own pale background. In the sticky nav it
+   was stone-02 on a translucent travertine overlay, 1.10:1, and that one had
+   been there all along. Same symptom, two different causes, both invisible. */
 .lang-tag{
   display:inline-block;margin-left:5px;padding:1px 5px;border-radius:4px;
-  font-size:9.5px;font-weight:700;letter-spacing:.08em;vertical-align:1px;
-  background:var(--stone-03);color:var(--ink-03);
+  font-size:10px;font-weight:700;letter-spacing:.08em;vertical-align:1px;
+  background:var(--stone-03);color:#4A535E;
 }
-.nav .lang-tag{background:rgba(244,240,232,.14);color:var(--stone-02)}
+.nav .lang-tag{background:rgba(21,24,28,.07);color:#4A535E}
 
 .enbar{background:var(--ink-00);color:var(--stone-02);padding:18px 0;
   border-bottom:1px solid rgba(244,240,232,.1)}
