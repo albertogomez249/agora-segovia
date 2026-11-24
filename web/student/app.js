@@ -150,12 +150,10 @@ const proof = (o) => {
 };
 
 const demoNote = () => `
-  <div class="guest" style="background:var(--stone-02);color:var(--ink-02)">
-    <div class="t" style="font-size:12.5px;line-height:1.45">
-      <b style="color:var(--oxblood)">Demonstration.</b> These are real Segovia businesses,
-      but the discounts, prices and reviews are invented. Nothing here is an offer.
-    </div>
-  </div>`;
+  <p class="demo-line">
+    <b>Demonstration.</b> Real Segovia businesses · invented prices and reviews ·
+    nothing here is an offer.
+  </p>`;
 
 const guestStrip = (what) => ME ? '' : `
   <div class="guest">
@@ -362,6 +360,78 @@ function drawMap(pins, centre) {
   const captions = () => host.classList.toggle('show-what', MAP.getZoom() >= 15);
   MAP.on('zoomend', captions);
   setTimeout(captions, 420);
+
+  MAP.on('zoomend moveend', declutter);
+  setTimeout(declutter, 440);
+  setTimeout(declutter, 950);
+}
+
+/* Four venues on the same square metre of screen is four prices nobody can
+   read: the old town is 400 metres across and the pins were landing on top of
+   one another. Real coordinates stay real — the marker keeps its true position
+   and only its label is nudged, by whole pixels, until the badges stop
+   overlapping. Nothing moves on the map; the labels get out of each other's
+   way, which is what a paper map engraver would have done. */
+function declutter() {
+  if (!MAP || !MARKS.length) return;
+  const boxes = [];
+  // Measured once: every badge is the same height and the width follows the
+  // price, so reading one element is enough to size them all.
+  const sample = MARKS[0].m.getElement();
+  if (!sample) return;
+
+  // Reset first, or offsets compound every time the map moves.
+  MARKS.forEach(({ m }) => {
+    const el = m.getElement();
+    if (el) { el.style.setProperty('--dx', '0px'); el.style.setProperty('--dy', '0px'); }
+  });
+
+  const order = MARKS
+    .map(({ m }) => ({ m, pt: MAP.latLngToContainerPoint(m.getLatLng()) }))
+    .sort((a, b) => a.pt.y - b.pt.y);   // top ones keep their place
+
+  for (const { m, pt } of order) {
+    const el = m.getElement();
+    const badge = el && el.querySelector('.b');
+    if (!badge) continue;
+    const w = badge.offsetWidth || 64, h = badge.offsetHeight || 26;
+    // The stage the labels have to stay inside. The top edge is not the top of
+    // the map: the category chips float over it, and a price hidden behind a
+    // chip is worse than a price slightly off its pin.
+    const size = MAP.getSize();
+    const LIMIT = { top: 84, bottom: size.y - 30, left: 6, right: size.x - 6 };
+
+    const boxAt = (dx, dy) => ({ l: pt.x - w / 2 + dx, r: pt.x + w / 2 + dx,
+                                 t: pt.y - h + dy,     b: pt.y + dy });
+    const inside = c => c.t >= LIMIT.top && c.b <= LIMIT.bottom &&
+                        c.l >= LIMIT.left && c.r <= LIMIT.right;
+    const clear = c => !boxes.some(o =>
+      c.l < o.r + 3 && c.r > o.l - 3 && c.t < o.b + 3 && c.b > o.t - 3);
+
+    // Candidates in order of how well the label still reads as belonging to
+    // its point: straight up, straight down, then out to the sides.
+    const step = h + 4;
+    const cand = [[0, 0]];
+    for (let k = 1; k <= 4; k++) {
+      cand.push([0, -k * step], [0, k * step],
+                [w * 0.56, -k * step], [-w * 0.56, -k * step],
+                [w * 0.56, k * step], [-w * 0.56, k * step]);
+    }
+    let dx = 0, dy = 0, placed = false;
+    for (const [cx, cy] of cand) {
+      const c = boxAt(cx, cy);
+      if (inside(c) && clear(c)) { dx = cx; dy = cy; placed = true; break; }
+    }
+    // Nowhere clean to put it: leave it on its point rather than fling it
+    // across the map. Overlapping honestly beats pointing at the wrong place.
+    if (!placed) { dx = 0; dy = 0; }
+    const box = () => boxAt(dx, dy);
+
+    boxes.push(box());
+    el.style.setProperty('--dx', Math.round(dx) + 'px');
+    el.style.setProperty('--dy', Math.round(dy) + 'px');
+    el.classList.toggle('moved', dx !== 0 || dy !== 0);
+  }
 }
 
 /* The list under the map is not a leftover, it is the other half of the screen.

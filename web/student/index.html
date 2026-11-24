@@ -39,7 +39,7 @@
     transition:background .16s var(--tap);
   }
   .purse:active{background:rgba(244,240,232,.18)}
-  .purse svg{width:16px;height:16px;opacity:.72}
+  .purse svg{width:16px;height:16px;opacity:.72;stroke-width:1.3}
 
   /* -------------------------------------------------------------- scroll */
   main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 112px}
@@ -93,14 +93,14 @@
     background:linear-gradient(180deg,rgba(244,240,232,0),var(--stone-01) 26%)}
   .sheet-x{position:absolute;top:12px;right:16px;width:32px;height:32px;border-radius:50%;
     background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
-  .sheet-x svg{width:15px;height:15px}
+  .sheet-x svg{width:15px;height:15px;stroke-width:1.3}
   /* Opening hours under the venue name. The icon is set explicitly because an
      inline SVG with no size of its own expands to fill the paragraph. */
   .vhours{margin:6px 0 0;display:flex;gap:6px;align-items:center}
-  .vhours svg{width:14px;height:14px;flex:0 0 14px;opacity:.7}
+  .vhours svg{width:14px;height:14px;flex:0 0 14px;opacity:.7;stroke-width:1.25}
   .sheet-back{position:absolute;top:12px;left:16px;width:32px;height:32px;border-radius:50%;
     background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
-  .sheet-back svg{width:16px;height:16px}
+  .sheet-back svg{width:16px;height:16px;stroke-width:1.3}
 
   /* --------------------------------------------------------- price block */
   .ledger{border-top:1px solid var(--line);margin:22px 0 0}
@@ -136,8 +136,12 @@
     background:var(--ink-00);text-align:left;transition:transform .18s var(--tap)}
   .railcard:active{transform:scale(.975)}
   .railcard .art{display:block;height:112px;position:relative;overflow:hidden}
+  /* The scrim is not decoration: the plate underneath is a generated pattern
+     of unknown value, and a photograph could be anything at all. White type
+     has to hold over both, so the veil is deep enough for the worst case. */
   .railcard .art::after{content:'';position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(21,24,28,0) 38%,rgba(21,24,28,.82) 100%)}
+    background:linear-gradient(180deg,rgba(21,24,28,0) 24%,rgba(21,24,28,.5) 58%,
+      rgba(21,24,28,.88) 100%)}
   .railcard .over{display:block;position:absolute;left:0;right:0;bottom:0;padding:11px 13px;color:#fff;z-index:1}
   .railcard .over .n{display:block;font-family:var(--display);font-size:16.5px;line-height:1.15;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -155,7 +159,8 @@
   .evcard:active{transform:scale(.99)}
   .evcard .art{display:block;height:124px;position:relative;overflow:hidden}
   .evcard .art::after{content:'';position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(21,24,28,.1) 40%,rgba(21,24,28,.72) 100%)}
+    background:linear-gradient(180deg,rgba(21,24,28,.14) 32%,rgba(21,24,28,.46) 62%,
+      rgba(21,24,28,.84) 100%)}
   .evcard .art .tagline,.evcard .art .when{z-index:1}
   .evcard .art .tagline{display:block;position:absolute;left:12px;top:11px;background:rgba(21,24,28,.6);
     color:#fff;border-radius:6px;padding:4px 9px;font-size:10.5px;font-weight:700;
@@ -193,7 +198,7 @@
   .mcard .seal{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
     letter-spacing:.11em;text-transform:uppercase;color:#0F1216;background:var(--bronze-hi);
     border-radius:5px;padding:4px 8px}
-  .mcard .seal svg{width:11px;height:11px;stroke-width:3}
+  .mcard .seal svg{width:11px;height:11px;stroke-width:1.7}
   .mcard .nm{font-family:var(--display);font-size:25px;line-height:1.1;margin:auto 0 0}
   .mcard .uni{font-size:11.5px;color:#A9B3BE;margin:5px 0 0}
   .mcard .bot{display:flex;align-items:flex-end;justify-content:space-between;margin:13px 0 0}
@@ -215,10 +220,19 @@
   .guest .t{flex:1;font-size:13.5px;line-height:1.45}
   .guest .t b{color:var(--bronze-hi);font-weight:600}
 
+  /* The demonstration notice. It must be impossible to miss and cheap to
+     scroll past: a rule above it, the word in oxblood, one line of text. A
+     card here pushed everything the student came for below the fold. */
+  .demo-line{
+    font-size:12px;line-height:1.5;color:var(--ink-04);margin:0 0 16px;
+    padding:9px 0 0;border-top:1px solid var(--line);letter-spacing:.005em;
+  }
+  .demo-line b{color:var(--oxblood);font-weight:700;letter-spacing:.02em}
+
   /* ----------------------------------------------------------- proof chips */
   .proof{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-04)}
   .proof.hot{color:var(--oxblood);font-weight:600}
-  .proof svg{width:12px;height:12px}
+  .proof svg{width:12px;height:12px;stroke-width:1.2}
 
   /* ---------------------------------------------------------------- auth */
   #gate{position:absolute;inset:0;z-index:60;animation:rise .3s var(--ease) both;background:var(--ink-00);color:var(--stone-00);
@@ -273,15 +287,26 @@
     background:var(--stone-00);border:1px solid rgba(21,24,28,.14);
     box-shadow:0 3px 10px rgba(21,24,28,.22);white-space:nowrap;
     font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-00);
-    transform:translate(-50%,-100%);
+    /* --dx/--dy come from declutter(): the point stays where it is and only
+       the label steps aside. Pixel values, so nothing lands on a half pixel. */
+    transform:translate(calc(-50% + var(--dx,0px)), calc(-100% + var(--dy,0px)));
+    transition:transform .22s var(--ease);
   }
+  /* When a label has been moved, the place it belongs to is marked at its real
+     position. Without this the price floats and means nothing. */
+  .pin.moved::before{
+    content:'';position:absolute;left:-3.5px;top:-3.5px;width:7px;height:7px;
+    border-radius:50%;background:var(--stone-00);border:2px solid var(--ink-00);
+    box-shadow:0 1px 4px rgba(21,24,28,.35);
+  }
+  .pin.moved .b::after{opacity:0}
   .pin .b::after{
     content:'';position:absolute;left:50%;bottom:-5px;width:9px;height:9px;
     background:var(--stone-00);border-right:1px solid rgba(21,24,28,.14);
     border-bottom:1px solid rgba(21,24,28,.14);transform:translateX(-50%) rotate(45deg);
   }
   .pin .d{flex:0 0 auto;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;color:#fff}
-  .pin .d svg{width:11px;height:11px;stroke-width:2}
+  .pin .d svg{width:11px;height:11px;stroke-width:1.6}
   .pin.sel .b{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
   .pin.sel .b::after{background:var(--ink-00);border-color:var(--ink-00)}
   /* A price with no object is not an offer. The pin carries what it buys on a
