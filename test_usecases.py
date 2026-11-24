@@ -87,18 +87,38 @@ def case_wrong_code_is_refused():
 
 
 def case_claiming_gives_a_code(tok):
+    """Claiming spends real balance, so this case has to pay its own way or it
+    only passes the first time it is ever run. The first version did not, and
+    after a handful of runs it started failing on an empty wallet — which was
+    the test being wrong, not the product.
+
+    Being forced to deal with the money turned out to be worth it: refusing a
+    claim there is no balance for is itself a rule, and it had no test."""
     print("\nClaiming an offer gives a code to show at the door")
     s, offers = call("GET", "/api/offers")
-    first = (offers.get("offers") or [None])[0]
-    if not (tok and first):
+    priced = [o for o in (offers.get("offers") or []) if o.get("student_cents")]
+    if not (tok and priced):
         return check("an offer exists to claim", False, "no offer or no token")
-    s, r = call("POST", "/api/offers/claim", {"offer_id": first["id"]}, token=tok)
+    dearest = max(priced, key=lambda o: o["student_cents"])
+
+    # Empty the question first: can you claim what you cannot pay for?
+    s, me = call("GET", "/api/me", token=tok)
+    balance = (me.get("student") or {}).get("wallet_cents")
+    if isinstance(balance, int) and balance < dearest["student_cents"]:
+        s, r = call("POST", "/api/offers/claim", {"offer_id": dearest["id"]}, token=tok)
+        check("a claim with too little balance is refused", s >= 400, (s, r))
+
+    need = round(dearest["student_cents"] / 100.0) + 5
+    s, r = call("POST", "/api/wallet/topup", {"amount_eur": min(need, 200)}, token=tok)
+    check("the wallet can be topped up", s == 200, (s, r))
+
+    s, r = call("POST", "/api/offers/claim", {"offer_id": dearest["id"]}, token=tok)
     code = str(r.get("code") or r.get("redeem_code") or "")
     check("the claim is accepted", s == 200, (s, r))
     check("it returns six digits", len(code) == 6 and code.isdigit(), repr(code))
-    s2, r2 = call("POST", "/api/offers/claim", {"offer_id": first["id"]})
+    s2, r2 = call("POST", "/api/offers/claim", {"offer_id": dearest["id"]})
     check("a guest cannot claim", s2 >= 400, (s2, r2))
-    return first, code
+    return dearest, code
 
 
 def case_reviews_are_earned(tok):
