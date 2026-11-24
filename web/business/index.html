@@ -35,7 +35,7 @@
   .sent{border:1px solid rgba(244,240,232,.14);border-radius:12px;padding:15px 17px;margin:0 0 22px;
     font-size:13px;color:var(--ink-04);line-height:1.6;background:rgba(244,240,232,.04);max-width:34rem}
   .sent b{color:var(--stone-01);font-weight:500}
-  .sent .big{font-family:var(--display);font-size:25px;letter-spacing:.24em;color:var(--bronze-hi);
+  .sent .big{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;font-size:25px;letter-spacing:.24em;color:var(--bronze-hi);
     display:block;margin:8px 0 2px}
 
   /* ---------------------------------------------------------------- shell */
@@ -69,7 +69,7 @@
   .stats .s{background:var(--stone-00);padding:20px 22px}
   .stats .s .k{font-size:11px;text-transform:uppercase;letter-spacing:.11em;color:var(--ink-04);
     font-weight:600}
-  .stats .s .v{font-family:var(--display);font-size:36px;line-height:1.1;margin:10px 0 0}
+  .stats .s .v{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;font-size:36px;line-height:1.1;margin:10px 0 0}
   .stats .s .v.coin{color:var(--oxblood)}
   .stats .s .n{font-size:12px;color:var(--ink-04);margin:6px 0 0}
   @media(max-width:1000px){.stats{grid-template-columns:repeat(2,1fr)}}
@@ -97,6 +97,33 @@
   /* ------------------------------------------------------------ assistant */
   .lab{display:grid;grid-template-columns:1.15fr .85fr;gap:20px;align-items:start}
   @media(max-width:1060px){.lab{grid-template-columns:1fr}}
+
+  /* The console had breakpoints for every grid inside it and none for the
+     shell that holds them, so the 252px sidebar kept its full width all the
+     way down: in a 576px window it left 276px of content and the assistant's
+     messages wrapped at ten characters a line, with the reply field cut off at
+     the edge. Below the width where a column of navigation stops earning its
+     space, it becomes a bar across the top and the nav scrolls sideways. */
+  @media(max-width:860px){
+    #shell{grid-template-columns:1fr;grid-template-rows:auto 1fr}
+    aside{height:auto;position:sticky;top:0;z-index:30;padding:10px 16px;
+      display:grid;grid-template-columns:auto 1fr auto;align-items:center;column-gap:16px;
+      border-bottom:1px solid var(--line-dark)}
+    aside .brand{padding:0;font-size:16px}
+    aside .forwhom{display:none}
+    aside nav{flex-direction:row;gap:4px;overflow-x:auto;scrollbar-width:none;
+      -webkit-overflow-scrolling:touch}
+    aside nav::-webkit-scrollbar{display:none}
+    aside nav button{flex:0 0 auto;width:max-content;min-width:0;padding:8px 11px;gap:8px;white-space:nowrap}
+    aside .foot{margin-top:0;padding-top:0;border-top:0;display:flex;align-items:center;gap:10px}
+    aside .who{display:none}
+    main{padding:24px 18px 64px}
+  }
+  /* Narrower still, the labels go and the marks carry the nav on their own. */
+  @media(max-width:620px){
+    aside nav button .lb{display:none}
+    aside nav button{padding:8px 9px}
+  }
   .talk{background:var(--stone-00);border:1px solid var(--line);border-radius:14px;
     display:flex;flex-direction:column;height:min(70vh,620px)}
   .thread{flex:1;overflow-y:auto;padding:22px;display:flex;flex-direction:column;gap:14px}

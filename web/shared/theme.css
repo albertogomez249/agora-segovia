@@ -100,10 +100,35 @@ svg{display:block}
   margin-right:-.34em;  /* cancel the trailing letter-space */
 }
 .inscript.dim{color:var(--ink-04)}
+/* A numeral inside an inscriptional label keeps the label's tracking, size and
+   colour: only the drawing of the digits changes, so the line still reads as
+   one run of Roman capitals. */
+.inscript .figure{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;
+  font-size:inherit;letter-spacing:inherit;color:inherit;font-weight:600}
 .inscript.on-dark{color:var(--bronze-hi)}
 
 .numeral{font-family:var(--display);font-feature-settings:'lnum';letter-spacing:.02em}
-.price{font-family:var(--display);font-size:25px;line-height:1;color:var(--oxblood);letter-spacing:.01em}
+
+/* Marcellus is cut from Trajan, and Trajan has no numerals at all: the ones
+   Marcellus supplies are drawn to sit beside inscriptional capitals, so its 1
+   is an I and its 0 an O. That is a correct decision by the type designer and
+   the wrong face for a number anybody has to READ. The moderation console was
+   showing "IO waiting on you", "4I published" and "O rejected" — three of
+   three misread.
+   I first exempted prices from this, reasoning that the € and the decimal
+   point give enough context that nobody parses €I2.50 as anything but twelve
+   fifty, and that the oxblood serif price is the signature of the product.
+   Then I looked at one at its real size: "€IO.OO", in oxblood, at 36px, the
+   most prominent number anywhere in the app. The reasoning was wrong. What
+   makes the price the signature is the oxblood and the scale, not the serif,
+   and both survive the change.
+   So the rule has no exceptions: Marcellus sets words, never a number anyone
+   has to read. Numbers take the interface face with tabular lining figures,
+   where a 1 is a 1 and a 0 is not an O. */
+.figure{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;
+  font-weight:600;letter-spacing:-.01em}
+.price{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;
+  font-size:25px;line-height:1;color:var(--oxblood);letter-spacing:-.015em}
 .price.lg{font-size:36px}
 .was{font-size:13px;color:var(--ink-04);text-decoration:line-through;letter-spacing:0}
 
@@ -164,7 +189,8 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.5}
 /* code entry: six discrete glyphs */
 .codefield{
   width:100%;min-height:62px;text-align:center;
-  font-family:var(--display);font-size:30px;letter-spacing:.42em;text-indent:.42em;
+  font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;
+  font-size:30px;letter-spacing:.42em;text-indent:.42em;
   background:var(--stone-00);border:1px solid var(--line);border-radius:12px;
 }
 .codefield:focus{outline:none;border-color:var(--bronze)}

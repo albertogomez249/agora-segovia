@@ -19,7 +19,17 @@
   }
   header.bar .in{max-width:980px;margin:0 auto;padding:0 22px;
     display:flex;align-items:center;justify-content:space-between;gap:16px}
-  header.bar .mark{font-family:var(--display);font-size:16px;letter-spacing:.28em;padding-left:.28em}
+  /* The two words used to wrap wherever they fell, leaving the interpunct
+     dangling at the end of a line like a dropped comma. A separator is only a
+     separator while both parts share a line, so below the width where they
+     fit the mark stacks on purpose and the dot goes away. */
+  header.bar .mark{font-family:var(--display);font-size:16px;letter-spacing:.28em;
+    padding-left:.28em;white-space:nowrap;display:flex;align-items:baseline;gap:.55em}
+  header.bar .mark i{font-style:normal;color:var(--bronze)}
+  @media (max-width:620px){
+    header.bar .mark{flex-direction:column;gap:2px;font-size:13px;line-height:1.25}
+    header.bar .mark i{display:none}
+  }
   header.bar .who{font-size:13px;color:#9AA5B1}
   header.bar .who b{color:var(--bronze-hi);font-weight:600}
 
@@ -29,7 +39,7 @@
     background:var(--stone-00);padding:10px 15px;transition:border-color .15s var(--tap);
   }
   .counts button[aria-pressed="true"]{border-color:var(--ink-00);background:var(--ink-00);color:var(--stone-00)}
-  .counts button .n{font-family:var(--display);font-size:21px;line-height:1}
+  .counts button .n{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;font-size:21px;line-height:1}
   .counts button .k{font-size:12px;letter-spacing:.04em;opacity:.78}
 
   .rv{
@@ -59,7 +69,7 @@
   #gate .note2{font-size:12px;color:var(--ink-04);line-height:1.6;margin:18px 0 0}
   .sent{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 18px;
     font-size:13px;color:var(--ink-03);line-height:1.55;background:var(--stone-00)}
-  .sent .big{font-family:var(--display);font-size:21px;letter-spacing:.22em;color:var(--bronze);
+  .sent .big{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;font-size:21px;letter-spacing:.22em;color:var(--bronze);
     display:block;margin:7px 0 0}
 
   #toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);z-index:70;
@@ -73,7 +83,7 @@
 <body>
 <header class="bar hide" id="bar">
   <div class="in">
-    <span class="mark">ÁGORA · MODERATION</span>
+    <span class="mark"><span>ÁGORA</span><i>·</i><span>MODERATION</span></span>
     <span class="who" id="who"></span>
   </div>
 </header>

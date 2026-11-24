@@ -7,7 +7,7 @@
 const $ = s => document.querySelector(s);
 let ME = null, FILTER = 'pending';
 
-const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+const stars = (n, px) => rating(n, px);   // drawn in shared/icons.js
 
 /* ------------------------------------------------------------------ gate */
 $('#send').onclick = async e => {
@@ -89,7 +89,7 @@ function card(r) {
   const acts = r.status === 'pending'
     ? `<div class="acts">
          <button class="btn btn--sm" data-decide="published" data-id="${r.id}">Publish</button>
-         <button class="btn btn--plain btn--sm" data-decide="rejected" data-id="${r.id}">Reject</button>
+         <button class="btn btn--quiet btn--sm" data-decide="rejected" data-id="${r.id}">Reject</button>
        </div>`
     : `<div class="acts">
          <span class="verdict ${r.status === 'published' ? 'pub' : 'rej'}">${esc(r.status)}</span>
@@ -106,7 +106,7 @@ function card(r) {
             r.degree ? ' · ' + esc(r.degree) : ''}${r.year ? ', year ' + r.year : ''}<br>
             ${esc(r.university || '')} · ${esc(r.when || '')}</div>
         </div>
-        <div class="stars" title="${r.rating} of 5">${stars(r.rating)}</div>
+        <div class="stars" title="${r.rating} of 5">${stars(r.rating, 15)}</div>
       </div>
       <div class="body">${esc(r.body)}</div>
       ${acts}

@@ -55,7 +55,8 @@ function enter() {
 }
 function paintNav() {
   $('#nav').innerHTML = NAV.map(n =>
-    `<button data-p="${n.id}" aria-current="${n.id === PAGE}">${ICON[n.icon]}<span>${n.label}</span>
+    `<button data-p="${n.id}" aria-current="${n.id === PAGE}" aria-label="${n.label}"
+      >${ICON[n.icon]}<span class="lb">${n.label}</span>
       ${n.id === 'apps' && COUNTS.applications ? `<span class="pip">${COUNTS.applications}</span>` : ''}
       ${n.id === 'till' && COUNTS.pending ? `<span class="pip">${COUNTS.pending}</span>` : ''}</button>`).join('');
   $('#nav').querySelectorAll('[data-p]').forEach(b => b.onclick = () => go(b.dataset.p));

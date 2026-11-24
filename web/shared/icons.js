@@ -189,3 +189,39 @@ function arcade(width, height, arches, opacity) {
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" aria-hidden="true"
     style="opacity:${opacity == null ? 0.16 : opacity}">${p}</svg>`;
 }
+
+/* A rating, drawn rather than typed. Everything else in this product is a mark
+   we cut ourselves; the ratings were U+2605 and U+2606, which is to say they
+   were whatever font happened to answer — different weight, different optical
+   size and different vertical centring on every platform, in the one place a
+   student's judgement of a venue is shown.
+   Not an outline for the unearned half: a five-pointed star at 13px has
+   counters under a pixel wide and an outlined one fills in to a blob. The
+   earned stars are solid and the rest are the same solid star held back, which
+   is legible at any size and keeps one shape on the row.
+   Not an icon either, so it lives down here with the arcade: it takes a number
+   and returns a row, where every icon takes nothing and returns one mark. */
+const STAR = 'M12 3.4l2.62 5.42 5.88.83-4.26 4.2 1.02 5.9L12 17l-5.26 2.75 1.02-5.9L3.5 9.65l5.88-.83z';
+function rating(n, px) {
+  const s = px || 13, full = Math.max(0, Math.min(5, Math.round(n || 0)));
+  let out = '';
+  for (let i = 0; i < 5; i++) {
+    out += `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"
+      style="display:inline-block;vertical-align:-.12em;opacity:${i < full ? 1 : 0.3}"
+      ><path d="${STAR}" fill="currentColor"/></svg>`;
+  }
+  return `<span role="img" aria-label="${full} of 5" style="display:inline-flex;gap:1.5px"
+    >${out}</span>`;
+}
+
+/* The rating picker shows n stars, not n out of five: five marks beside the
+   numeral "2" would say two different things at once. */
+function ratingRun(n, px) {
+  const s = px || 13;
+  let out = '';
+  for (let i = 0; i < n; i++) {
+    out += `<svg viewBox="0 0 24 24" width="${s}" height="${s}" aria-hidden="true"
+      style="display:inline-block;vertical-align:-.12em"><path d="${STAR}" fill="currentColor"/></svg>`;
+  }
+  return `<span style="display:inline-flex;gap:1.5px">${out}</span>`;
+}

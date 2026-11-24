@@ -613,7 +613,8 @@ async function paintReviews(p) {
 
   box.innerHTML =
     `<div class="inscript dim" style="margin:22px 0 2px">WHAT STUDENTS SAY${
-      d.average ? ` · ${d.average.toFixed(1)}/5 from ${d.count}` : ''}</div>` +
+      d.average ? ` · <span class="figure">${d.average.toFixed(1)}</span>/5 FROM <span
+        class="figure">${d.count}</span>` : ''}</div>` +
     (d.reviews.length
       ? `<div>${d.reviews.slice(0, 6).map(r => `
           <div class="revcard">
@@ -648,7 +649,7 @@ function writeReview(p) {
       A moderator reads it before anyone else does.</p>
     <div class="chiprow" id="rate" style="margin:0 0 6px">
       ${[1, 2, 3, 4, 5].map(n =>
-        `<button class="chip" data-r="${n}" aria-pressed="false">${n}&nbsp;${stars(n).slice(0, n)}</button>`).join('')}
+        `<button class="chip" data-r="${n}" aria-pressed="false">${n}&nbsp;${ratingRun(n, 12)}</button>`).join('')}
     </div>
     <span class="msg" id="rateMsg"></span>
     <label class="field" style="margin-top:14px"><span class="lbl">In your own words</span>
@@ -969,7 +970,7 @@ function teach() {
    group in Segovia can be a dozen people, so a count can name them. The API
    refuses any cohort under five and this screen says so out loud rather than
    quietly showing a blank. */
-const stars = n => '★★★★★'.slice(0, n) + '☆☆☆☆☆'.slice(0, 5 - n);
+const stars = (n, px) => rating(n, px);   // drawn in shared/icons.js
 
 async function campus(v, turn) {
   const sel = { university: PREF.uni || (ME ? ME.university : ''), degree: PREF.degree || '' };
