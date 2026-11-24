@@ -5,7 +5,15 @@ const $ = s => document.querySelector(s);
 let ME = null, TAB = 'map', RESUME = null;
 let MAP = null, MAPLAYER = null, MARKS = [];
 const PREF = JSON.parse(localStorage.getItem('agora_pref') || '{}');
-const savePref = () => localStorage.setItem('agora_pref', JSON.stringify(PREF));
+/* A category or a sort order is a preference and is worth remembering. What you
+   typed into the search box is not: coming back tomorrow to a city with one
+   venue in it reads as a broken app, not as a filter you left on. So it is held
+   for this visit only and never written to storage. */
+delete PREF.q;
+const savePref = () => {
+  const { q, ...keep } = PREF;
+  localStorage.setItem('agora_pref', JSON.stringify(keep));
+};
 
 /* Phase 1 is a leisure discounts app and the map is its front door, so the map
    is the first tab and the one the app opens on. Buying and going out are the
@@ -475,23 +483,42 @@ const sortPins = (pins, how) => {
   return c;
 };
 
+/* Search was asked for twice, and both times for the same reason: the chips
+   answer "what kind of thing" but not "is my place in here at all". It matches
+   the venue, the thing on offer and the part of town, because those are the
+   three words a student actually types. */
+const matches = (p, q) => {
+  if (!q) return true;
+  const hay = [p.name, p.from_what, catLabel(p.leisure), ZONE[p.zone] || p.zone]
+    .join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+};
+
 function paintMapList(pins, sel) {
   const box = $('#maplist');
   if (!box) return;
   const how = PREF.sort || 'price';
-  const rows = sortPins(pins, how);
+  const q = (PREF.q || '').trim();
+  const found = pins.filter(p => matches(p, q));
+  const rows = sortPins(found, how);
   const title = sel ? catLabel(sel) : 'Everywhere in Segovia';
   box.innerHTML =
     demoNote() +
     guestStrip('buy from your phone and show the code at the door') +
     '<div id="toppicks"></div>' +
-    `<div class="lead-in"><div class="inscript dim">${esc(title.toUpperCase())}</div>
-       <span class="t-meta">${pins.length} place${pins.length === 1 ? '' : 's'}</span></div>` +
-    (pins.length ? `<div class="filters" style="margin:0 0 4px;padding:0 0 14px">
+    `<label class="seek">${ICON.seek || ICON.map}
+       <input id="seek" type="search" inputmode="search" autocomplete="off"
+              placeholder="A place, a dish, a part of town" value="${esc(q)}">
+       ${q ? `<button class="seek-x" id="seekx" aria-label="Clear">${ICON.close}</button>` : ''}
+     </label>` +
+    `<div class="lead-in"><div class="inscript dim">${esc(
+       (q ? 'RESULTS FOR “' + q + '”' : title).toUpperCase())}</div>
+       <span class="t-meta">${found.length} place${found.length === 1 ? '' : 's'}</span></div>` +
+    (found.length ? `<div class="filters" style="margin:0 0 4px;padding:0 0 14px">
        <div class="chiprow">${SORTS.map(([k, l]) =>
          `<button class="chip" data-s="${k}" aria-pressed="${how === k}">${l}</button>`).join('')}
        </div></div>` : '') +
-    (pins.length
+    (found.length
       ? `<div class="rows stagger">${rows.map((p, i) => `
           <button class="row-item" data-p="${p.business_id}" style="animation-delay:${i * 26}ms">
             <span class="lead">${monogram(p.name)}</span>
@@ -505,8 +532,30 @@ function paintMapList(pins, sel) {
             <span class="tail"><span class="t-meta">from</span><br>
               <span class="price">${money(p.from_eur)}</span></span>
           </button>`).join('')}</div>`
-      : emptyState('pin', 'Nothing here yet', 'No venue in this category has a live price. Try another one.'));
+      : q
+        ? emptyState('pin', 'Nothing matches “' + esc(q) + '”',
+            'Try the name of the place, or the part of town.')
+        : emptyState('pin', 'Nothing here yet',
+            'No venue in this category has a live price. Try another one.'));
   wireGuest('Verify once with your university email.<br><b>Then every price in Segovia is one tap away.</b>');
+
+  // Typing must not rebuild the field under the cursor, so the list repaints
+  // and the input keeps its own value and selection.
+  const seek = box.querySelector('#seek');
+  if (seek) {
+    seek.oninput = () => {
+      PREF.q = seek.value; savePref();
+      const at = seek.selectionStart;
+      paintMapList(pins, sel); paintTopPicks(pins);
+      const again = $('#seek');
+      if (again) { again.focus(); again.setSelectionRange(at, at); }
+    };
+  }
+  const seekx = box.querySelector('#seekx');
+  if (seekx) seekx.onclick = () => {
+    PREF.q = ''; savePref(); paintMapList(pins, sel); paintTopPicks(pins);
+  };
+
   box.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
     PREF.sort = b.dataset.s; savePref(); paintMapList(pins, sel); paintTopPicks(pins);
   });
@@ -531,7 +580,7 @@ function paintMapList(pins, sel) {
 async function venueSheet(p) {
   sheet(`<div class="hero">${plate(p.name, 'b' + p.business_id)}
       <div class="cap"><div class="k">${esc(catLabel(p.leisure))}</div>
-        <div class="n">${esc(p.name)}</div></div></div>
+        <div class="n">${esc(p.name)}</div></div></div>${creditLine(p.name)}
     <div id="vfacts"></div>
     <div id="vbody" style="margin:16px 0 0">${skeleton(3)}</div>`);
 
@@ -602,6 +651,52 @@ function priceTail(o) {
    signed in write one, and the ratings read like noise. Here the gate is not
    "are you a student" but "did you pay here", which the app already knows. It
    is the one thing a scraped review site cannot copy. */
+/* A review is written in one language and read in another. International
+   students opened a venue, found the reviews in Spanish and said so — on a
+   product whose whole argument is that Segovia is not written for you, that is
+   the barrier itself showing up inside our own app. So: show it in the
+   reader's language where we have it, label it where we do not, and keep the
+   original one tap away, because a translation you cannot check is worth less.
+
+   UI_LANG is what the app is reading in. The student app is English today; when
+   the Spanish build lands it sets this and nothing else here changes. */
+const UI_LANG = (document.documentElement.lang || 'en').slice(0, 2);
+
+function reviewCard(r) {
+  const lang = r.lang || UI_LANG;
+  const foreign = lang !== UI_LANG;
+  const shown = foreign && r.body_alt ? r.body_alt : r.body;
+  const note = !foreign ? ''
+    : r.body_alt
+      ? `<button class="revlang" data-orig="${r.id}">
+           ${ICON.globe}<span>Translated from ${lang === 'es' ? 'Spanish' : 'English'} ·
+           show the original</span></button>`
+      : `<span class="revlang is-plain">${ICON.globe}<span>Written in ${
+           lang === 'es' ? 'Spanish' : 'English'}</span></span>`;
+  return `<div class="revcard">
+      <div class="top"><span class="vn">${esc(r.author || 'Student')}</span>
+        <span class="stars">${stars(r.rating)}</span></div>
+      <div class="who">${esc(r.degree || 'Student')}${r.year ? ', year ' + r.year : ''} · ${esc(r.when)}</div>
+      <p class="bd" id="rb${r.id}">${esc(shown)}</p>
+      ${note}
+    </div>`;
+}
+
+/* Swap one card between the translation and what the student actually wrote. */
+function wireReviewLangs(box, reviews) {
+  box.querySelectorAll('[data-orig]').forEach(b => b.onclick = () => {
+    const r = reviews.find(x => x.id == b.dataset.orig);
+    const p = box.querySelector('#rb' + r.id);
+    if (!r || !p) return;
+    const showingOriginal = p.dataset.orig === '1';
+    p.textContent = showingOriginal ? r.body_alt : r.body;
+    p.dataset.orig = showingOriginal ? '' : '1';
+    b.querySelector('span').textContent = showingOriginal
+      ? `Translated from ${r.lang === 'es' ? 'Spanish' : 'English'} · show the original`
+      : 'Showing the original · show the translation';
+  });
+}
+
 async function paintReviews(p) {
   const box = $('#vrev');
   if (!box) return;
@@ -616,13 +711,7 @@ async function paintReviews(p) {
       d.average ? ` · <span class="figure">${d.average.toFixed(1)}</span>/5 FROM <span
         class="figure">${d.count}</span>` : ''}</div>` +
     (d.reviews.length
-      ? `<div>${d.reviews.slice(0, 6).map(r => `
-          <div class="revcard">
-            <div class="top"><span class="vn">${esc(r.author || 'Student')}</span>
-              <span class="stars">${stars(r.rating)}</span></div>
-            <div class="who">${esc(r.degree || 'Student')}${r.year ? ', year ' + r.year : ''} · ${esc(r.when)}</div>
-            <p class="bd">${esc(r.body)}</p>
-          </div>`).join('')}</div>`
+      ? `<div>${d.reviews.slice(0, 6).map(r => reviewCard(r)).join('')}</div>`
       : `<p class="t-meta" style="margin:10px 0 0">No published review yet.</p>`) +
     (d.mine
       ? `<div class="guest" style="margin:16px 0 0">
@@ -636,6 +725,7 @@ async function paintReviews(p) {
        here, and read by a moderator before it appears. Venues cannot remove them.</p>
      <div style="height:16px"></div>`;
 
+  wireReviewLangs(box, d.reviews);
   const b = $('#wrev');
   if (b) b.onclick = () => writeReview(p);
 }
@@ -810,7 +900,23 @@ function offer(o, back) {
   };
 }
 
+/* "I'd want a way to show my code at the door with no signal." A club doorway
+   and a stone-walled dining room are exactly where a phone has none, and a code
+   that needs a round trip to be read is a code that fails at the only moment it
+   matters. Every pass is kept on the device as it is issued, and the card lists
+   the live ones whether or not the app can reach us. */
+const PASSES = () => { try { return JSON.parse(localStorage.getItem('agora_passes') || '[]'); }
+                       catch (e) { return []; } };
+function keepPass(p) {
+  const all = PASSES().filter(x => x.code !== p.code);
+  all.unshift(p);
+  // A pass is worth keeping for about a day; after that it is clutter.
+  const fresh = all.filter(x => Date.now() - x.at < 36 * 3600 * 1000).slice(0, 12);
+  try { localStorage.setItem('agora_passes', JSON.stringify(fresh)); } catch (e) {}
+}
+
 function pass(title, venue, code, line, note) {
+  keepPass({ code, venue, line, title, at: Date.now() });
   sheet(`
     <div style="text-align:center;padding:4px 0 2px">
       <div class="inscript" style="margin:0 0 10px">${esc(venue)}</div>
@@ -880,8 +986,13 @@ async function jobs(v) {
   const k = PREF.jobkind || '';
   const { jobs } = await Agora.get('/api/jobs', k ? { kind: k } : {});
   v.innerHTML =
+    // "I don't understand how students are able to earn something from this"
+    // — the name was doing all the explaining and none of it landed. Say what
+    // the two things are, who pays, and what Ágora keeps.
     head('III · WORK·AND·LEARNING', 'Earn a little',
-      'Shifts from Segovia businesses, and classes taught by students like you.') +
+      'Two ways to be paid rather than to spend: take a shift at a Segovia business, '
+      + 'or teach something you already know to another student. The business or the '
+      + 'student pays you; Ágora keeps 10% of a tutoring hour and nothing from a shift.') +
     guestStrip('apply, or teach something yourself') +
     `<div class="filters"><div class="chiprow">${[['', 'Everything'], ['job', 'Shifts'], ['tutoring', 'Tutoring']]
       .map(([v2, l]) => `<button class="chip" data-j="${v2}" aria-pressed="${k === v2}">${l}</button>`).join('')}
@@ -1095,6 +1206,22 @@ function walletSheet() {
   });
 }
 
+/* The codes you are carrying right now, read from the device rather than from
+   us. This is the block that works in a doorway with no signal. */
+function livePasses() {
+  const live = PASSES();
+  if (!live.length) return '';
+  return `<div class="inscript dim">YOUR CODES</div>
+    <p class="t-meta" style="margin:8px 0 12px">Kept on this phone, so they still open
+      if you have no signal at the door.</p>
+    <div class="rows" style="margin:0 0 30px">${live.map(p => `
+      <div class="row-item">
+        <span class="body"><span class="ttl" style="font-size:15px">${esc(p.venue)}</span>
+          <span class="sub">${esc(p.line || '')}</span></span>
+        <span class="tail"><span class="passcode">${esc(p.code)}</span></span>
+      </div>`).join('')}</div>`;
+}
+
 /* BENCH — TOTUM and ISIC make the card itself the product; the member looks at
    it. And UNiDAYS surfaces lifetime savings, which is the number that brings
    people back. Both live on this screen. */
@@ -1150,6 +1277,8 @@ async function card(v, turn) {
       <button class="btn btn--quiet btn--sm grow" id="inv">${ICON.spark}<span>Invite</span></button>
       <button class="btn btn--quiet btn--sm" id="lang">${ICON.globe}<span>${student.locale === 'en' ? 'ES' : 'EN'}</span></button>
     </div>
+
+    ${livePasses()}
 
     <div class="inscript dim">RECENT</div>
     ${act.transactions.length ? `<div class="rows" style="margin-top:12px">${act.transactions.map(t => `

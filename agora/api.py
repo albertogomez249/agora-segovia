@@ -219,8 +219,22 @@ def me(ctx, body):
 
 
 def health(ctx, body):
-    """Unauthenticated: lets run.sh tell our own server apart from whatever
-    else might be squatting on the port."""
+    """Unauthenticated. Two callers, one answer.
+
+    run.sh uses "app" to tell our own server apart from whatever else might be
+    squatting on the port before it kills anything, and the public site asks
+    before it sends anyone across the tunnel — when the tunnel was down on 23
+    November the main button led to a browser error, and six testers read that
+    as our verification rejecting them, which is the worst possible misreading.
+
+    There used to be a second health() defined further down this file, and
+    being later it shadowed this one and answered a bare {"ok": true}. The
+    route table registered /api/health twice as well, so the duplicate won
+    there too. Nothing looked broken — the site's check still passed — but
+    run.sh could no longer recognise its own process, so `--stop` and
+    `--restart` quietly refused to do anything and left yesterday's code
+    serving. Hence one function, one route, and the test suite checks the key.
+    """
     return {"app": "agora", "ok": True,
             "businesses": db.q("SELECT COUNT(*) n FROM businesses", one=True)["n"],
             "students": db.q("SELECT COUNT(*) n FROM students", one=True)["n"]}
@@ -235,6 +249,22 @@ def logout(ctx, body):
 
 # ------------------------------------------------------- student: browse
 
+def leisure_filter(body):
+    """The category asked for, refusing one we do not have.
+
+    `?leisure=casino` used to come back with the whole catalogue: the filter
+    was silently dropped and the caller was answered a different question from
+    the one they asked. Everything that can legitimately send this value gets
+    the list of categories from this same API, so an unknown one is a caller
+    that is wrong — and the useful thing to do with a wrong caller is tell it,
+    not quietly hand it everything.
+    """
+    key = (body.get("leisure") or "").strip()
+    if key and not leisure.known(key):
+        raise ApiError("There is no category called %r." % key[:32])
+    return leisure.valid(key)
+
+
 def list_offers(ctx, body):
     where, args = ["o.active=1"], []
     if body.get("zone"):
@@ -242,7 +272,7 @@ def list_offers(ctx, body):
     if body.get("kind"):
         where.append("o.kind=?"); args.append(body["kind"])
     # Phase 1's primary filter: what you are buying, not the shape of the cut.
-    leis = leisure.valid(body.get("leisure", ""))
+    leis = leisure_filter(body)
     if leis:
         where.append("o.leisure=?"); args.append(leis)
     if body.get("q"):
@@ -264,7 +294,7 @@ def list_events(ctx, body):
     where, args = ["e.active=1", "e.starts_at>=?"], [db.now()]
     if body.get("category"):
         where.append("e.category=?"); args.append(body["category"])
-    leis = leisure.valid(body.get("leisure", ""))
+    leis = leisure_filter(body)
     if leis:
         where.append("e.leisure=?"); args.append(leis)
     rows = db.q("SELECT e.*, b.name AS business_name, b.zone, b.address, "
@@ -350,7 +380,7 @@ def map_pins(ctx, body):
     category, and from how much. A venue with no live offer and no live event
     is not a pin — an empty pin is worse than no pin.
     """
-    leis = leisure.valid(body.get("leisure", ""))
+    leis = leisure_filter(body)
     pins = []
     for b in db.q("SELECT id,name,category,zone,address,lat,lng,real_name,hours "
                   "FROM businesses WHERE lat IS NOT NULL AND lng IS NOT NULL"):
@@ -428,12 +458,24 @@ def photos(ctx, body):
     try:
         names = sorted(os.listdir(PHOTO_DIR))
     except OSError:
-        return {"photos": {}}
+        return {"photos": {}, "credits": {}}
     for n in names:
         stem, ext = os.path.splitext(n)
         if ext.lower() in PHOTO_EXT and not n.startswith("."):
             out.setdefault(stem.lower(), "/photos/" + n)
-    return {"photos": out}
+    # Four of these are other people's photographs, used under CC BY-SA, and
+    # that licence is not "free to take": it is free on the condition that the
+    # photographer is named. So the credit travels with the listing rather than
+    # living in a file nobody reads — if a photo is on screen its author can be
+    # on screen too, and a photo whose credit went missing is a licence we are
+    # breaking, not a cosmetic omission.
+    credits = {}
+    try:
+        with open(os.path.join(PHOTO_DIR, "credits.json"), encoding="utf-8") as fh:
+            credits = json.load(fh)
+    except (OSError, ValueError):
+        credits = {}
+    return {"photos": out, "credits": {k: v for k, v in credits.items() if k in out}}
 
 
 def venue(ctx, body):
@@ -509,7 +551,7 @@ def list_jobs(ctx, body):
 
 def _review_rows(where, args):
     return db.q(
-        "SELECT r.id, r.rating, r.body, r.created_at, r.status, "
+        "SELECT r.id, r.rating, r.body, r.body_lang, r.body_alt, r.created_at, r.status, "
         "b.name AS business_name, b.id AS business_id, "
         "s.name AS student_name, s.degree, s.year, s.university "
         "FROM reviews r JOIN businesses b ON b.id=r.business_id "
@@ -520,11 +562,28 @@ def _review_rows(where, args):
 def _public_review(r):
     """What a reader sees. A first name, a degree and a year — enough to judge
     whether the reviewer is like you, not enough to find them."""
+    keys = r.keys()
     return {"id": r["id"], "rating": r["rating"], "body": r["body"],
+            # The language it was written in, and the other one where we have
+            # it. The reader's app decides which to show first; both travel, so
+            # "show original" costs no second request.
+            "lang": (r["body_lang"] if "body_lang" in keys else "") or _guess_lang(r["body"]),
+            "body_alt": (r["body_alt"] if "body_alt" in keys else ""),
             "business_id": r["business_id"], "business_name": r["business_name"],
             "author": (r["student_name"] or "").split(" ")[0],
             "degree": r["degree"], "year": r["year"],
             "when": time.strftime("%d %b %Y", time.localtime(r["created_at"]))}
+
+
+_ES_MARKERS = (" el ", " la ", " los ", " las ", " que ", " con ", " para ", " por ",
+               " pero ", " más ", " está ", " muy ", " del ", " una ", " un ", "ñ", "¡", "¿")
+
+
+def _guess_lang(text):
+    """Good enough to label a review, and only used for rows written before the
+    language was recorded. Not a language detector; a Spanish-word counter."""
+    t = (" " + (text or "").lower() + " ")
+    return "es" if sum(t.count(m) for m in _ES_MARKERS) >= 2 else "en"
 
 
 def list_reviews(ctx, body):
@@ -586,8 +645,9 @@ def write_review(ctx, body):
     if db.q("SELECT 1 FROM reviews WHERE business_id=? AND student_id=?",
             (bid, sub["id"]), one=True):
         raise ApiError("You have already reviewed this one.")
-    db.run("INSERT INTO reviews(business_id,student_id,rating,body,status,created_at) "
-           "VALUES(?,?,?,?,'pending',?)", (bid, sub["id"], rating, text, db.now()))
+    db.run("INSERT INTO reviews(business_id,student_id,rating,body,body_lang,status,created_at) "
+           "VALUES(?,?,?,?,?,'pending',?)",
+           (bid, sub["id"], rating, text, _guess_lang(text), db.now()))
     return {"ok": True, "status": "pending",
             "message": "Thanks. A moderator reads it before it appears."}
 
@@ -903,7 +963,7 @@ def biz_create_offer(ctx, body):
     # Without a leisure category an offer is invisible: it cannot be filtered
     # and it never reaches the map. Fall back to the venue's own nature rather
     # than storing a blank.
-    leis = leisure.valid(body.get("leisure", ""))
+    leis = leisure_filter(body)
     if not leis:
         biz = db.q("SELECT category FROM businesses WHERE id=?", (sub["id"],), one=True)
         leis = {"restaurant": "restaurants", "shop": "products", "culture": "theatre",

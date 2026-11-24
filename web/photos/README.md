@@ -33,6 +33,40 @@ Add a venue later and the rule is the same: take its name, flatten it. If a
 photo does not appear, the filename is wrong — check it against this table
 rather than the code.
 
+## What is actually in here today
+
+Four real photographs of four of these venues, taken from Wikimedia Commons
+under licences that permit reuse. They are the actual buildings, not stand-ins:
+
+| Venue | Photographer | Licence |
+|---|---|---|
+| Mesón de Cándido | Zarateman | CC0 |
+| Alcázar de Segovia | Rafa Esteve | CC BY-SA 4.0 |
+| Teatro Juan Bravo | Barcex | CC BY-SA 3.0 |
+| Gimnástica Segoviana CF (Estadio de La Albuera) | Cajarines | CC BY-SA 4.0 |
+
+`credits.json` holds the author, licence and source link for each, `/api/photos`
+serves them alongside the file list, and the app prints the credit under the
+picture. **CC BY-SA is not "free to take" — it is free on condition that the
+photographer is named.** A photograph whose credit goes missing is a licence
+being broken, not an untidy caption, so the credit travels with the file rather
+than living in a document nobody opens.
+
+### The other eight have no photograph, and that is not an oversight
+
+Restaurante José María, Mesón Duque, La Casa del Siglo XV, Limón y Menta,
+C.C. Luz de Castilla, Cines Artesiete, Pádel Segovia and Zibá. I looked: there
+is no freely-licensed photograph of any of them. The options for those are to
+photograph them ourselves or to ask the venue — and nothing else, because the
+two tempting shortcuts are both dishonest. Lifting a picture from a venue's
+own website or from Google is taking someone's copyrighted work. Putting a
+stock photograph of *some* restaurant under the name of a real, named
+restaurant is worse: it is a picture that claims to be a place it is not, in
+an app whose entire premise is that students can trust what they are told
+about a venue before they walk to it.
+
+So those eight keep the generated pattern, which claims nothing.
+
 ## Shooting them
 
 These are **our own photographs**, taken in Segovia. That matters for two

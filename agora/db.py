@@ -187,6 +187,12 @@ MIGRATIONS = [
     # Testers opened a pin and asked "open when?" before anything else. Opening
     # hours are part of the offer, not metadata about it.
     ("businesses", "hours", "TEXT NOT NULL DEFAULT ''"),
+    # A review is written in one language and read in another. International
+    # students opened a venue and found the reviews in Spanish, which is the
+    # barrier the whole product claims to remove, so every review now carries
+    # the language it was written in and its counterpart.
+    ("reviews", "body_lang", "TEXT NOT NULL DEFAULT ''"),
+    ("reviews", "body_alt", "TEXT NOT NULL DEFAULT ''"),
     ("offers", "leisure", "TEXT NOT NULL DEFAULT ''"),
     ("events", "leisure", "TEXT NOT NULL DEFAULT ''"),
 ]

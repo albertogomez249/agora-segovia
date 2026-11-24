@@ -176,10 +176,36 @@
   .evcard .meat .row2{display:flex;align-items:baseline;justify-content:space-between;margin:11px 0 0}
 
   /* sheet hero */
-  .hero{height:150px;margin:-12px -24px 18px;position:relative;overflow:hidden}
-  .hero::after{content:'';position:absolute;inset:0;
-    background:linear-gradient(180deg,rgba(21,24,28,.05) 32%,rgba(21,24,28,.78) 100%)}
+  /* Sized for a photograph, not for a pattern. At 150px a real facade arrived
+     as a horizontal slice of masonry with its building cut off; the generated
+     plates never minded because a pattern has no subject to crop. */
+  .hero{height:186px;margin:-12px -24px 18px;position:relative;overflow:hidden}
+  /* Two scrims, not one. The old single ramp was tuned against a quiet
+     generated plate and let the venue name land on a painted sign: a
+     photograph can put high-contrast detail exactly where the type goes. The
+     lower ramp is deeper and starts later so the picture stays a picture for
+     most of its height, and a short wash at the top keeps the credit legible
+     against a bright sky without greying the whole frame. */
+  .hero::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(180deg,rgba(21,24,28,.34) 0%,rgba(21,24,28,0) 22%),
+      linear-gradient(180deg,rgba(21,24,28,0) 40%,rgba(21,24,28,.52) 72%,rgba(21,24,28,.88) 100%)}
   .hero .cap{position:absolute;left:24px;bottom:14px;right:24px;color:#fff;z-index:1}
+  /* The photographer's name, on the picture, at the smallest size that is
+     still honestly readable — a credit set so small it cannot be read is the
+     same as no credit. It sits top-right so it never collides with the venue
+     name at the bottom, and it carries its own scrim because the corner of a
+     photograph can be any brightness at all. */
+  /* The credit is a caption, so it is set as one: under the picture, not on
+     it. On the image it had nowhere safe to live — top-right is the close
+     button, and bottom-right is where a long venue name like "Gimnástica
+     Segoviana CF" wraps to. Under the frame it collides with nothing, it reads
+     as what it is, and it survives any photograph and any name. */
+  .credit{
+    display:block;margin:-12px 0 16px;text-align:right;
+    font-size:10px;line-height:1.4;color:var(--ink-04);letter-spacing:.005em;
+  }
+  .credit:hover{color:var(--ink-03)}
   .hero .cap .k{font-family:var(--display);font-size:10px;letter-spacing:.3em;
     text-transform:uppercase;opacity:.86}
   .hero .cap .n{font-family:var(--display);font-size:25px;line-height:1.1;margin:7px 0 0;
@@ -333,6 +359,21 @@
     text-shadow:0 1px 0 var(--stone-00),0 0 4px var(--stone-00),0 0 8px var(--stone-00);
     pointer-events:none;
   }
+
+  /* Search. Two testers asked for it: the chips say what kind of thing, but
+     not whether the place you have in mind is in here at all. */
+  .seek{display:flex;align-items:center;gap:9px;margin:0 0 16px;padding:10px 13px;
+    border:1px solid var(--line);border-radius:11px;background:var(--stone-00)}
+  .seek svg{width:16px;height:16px;flex:0 0 16px;color:var(--ink-04)}
+  .seek input{flex:1;border:0;background:none;font:inherit;font-size:14.5px;color:var(--ink-00);
+    padding:0;min-width:0}
+  .seek input::placeholder{color:var(--ink-04)}
+  .seek input:focus{outline:none}
+  .seek:focus-within{border-color:var(--bronze)}
+  .seek input::-webkit-search-cancel-button{display:none}
+  .seek-x{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--stone-02);
+    display:grid;place-items:center;color:var(--ink-03)}
+  .seek-x svg{width:11px;height:11px}
 
   .maplist{padding:18px 20px 0}
   .maplist .lead-in{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 12px}

@@ -155,6 +155,7 @@ const ICON = (() => {
       <path d="M18.4 16.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>`),
 
     /* A clock, for a window of time. */
+    seek: w(`<circle cx="11" cy="11" r="6.4"/><path d="M15.8 15.8 20 20"/>`),
     clock: w(`
       <circle cx="12" cy="12" r="8.3"/>
       <path d="M12 7.2V12l3.2 2"/>`),

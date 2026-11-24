@@ -26,8 +26,19 @@ LABEL_ES = {k: es for k, _g, _en, es, *_ in LEISURE}
 
 
 def valid(key):
-    """A filter value the API will honour, or '' for everything."""
+    """A filter value the API will honour, or '' for everything.
+
+    Note what this cannot tell you: it returns '' both for "no filter was
+    asked for" and for "a filter was asked for and it is not one of ours".
+    Callers that need to tell those apart must use known() — collapsing them
+    is how `?leisure=casino` came to answer with the entire catalogue.
+    """
     return key if key in GROUP else ""
+
+
+def known(key):
+    """Is this a category we actually have? '' is not a category."""
+    return bool(key) and key in GROUP
 
 
 def as_json():

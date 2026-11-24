@@ -97,12 +97,12 @@ const PATTERNS = [
 
    The index comes from /api/photos, which is simply a listing of web/photos,
    so adding a photograph means adding a file. See that folder's README. */
-let PHOTOS = {};
+let PHOTOS = {}, CREDITS = {};
 async function loadPhotos() {
   try {
-    const r = await fetch('/api/photos');
-    PHOTOS = (await r.json()).photos || {};
-  } catch (e) { PHOTOS = {}; }
+    const r = await (await fetch('/api/photos')).json();
+    PHOTOS = r.photos || {}; CREDITS = r.credits || {};
+  } catch (e) { PHOTOS = {}; CREDITS = {}; }
 }
 
 /* "Mesón de Cándido" -> "meson-de-candido". The filename a photographer has to
@@ -114,6 +114,28 @@ function slug(name) {
 }
 
 const photoFor = name => PHOTOS[slug(name)] || null;
+
+/* Four of the photographs are other people's work, used under CC BY-SA. That
+   licence is not "free to take": it is free on condition that the photographer
+   is named. So wherever one of those pictures is shown large enough to be
+   looked at, the credit goes with it. A missing credit is not an untidy
+   caption, it is a licence we are not keeping. CC0 asks for nothing, but
+   Zarateman gets named too — the cost is one line and the alternative is
+   taking someone's work without saying whose it is. */
+const creditFor = name => CREDITS[slug(name)] || null;
+/* art.js is loaded by the student app and by the three pages of the public
+   site, and only the student app also loads api.js — so this file cannot
+   borrow esc() from there. One line of its own is cheaper than a dependency
+   that is satisfied on one page in four. */
+const escA = s => String(s == null ? '' : s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+function creditLine(name) {
+  const c = creditFor(name);
+  if (!c) return '';
+  return `<a class="credit" href="${escA(c.source)}" target="_blank" rel="noopener noreferrer"
+    >Photograph ${escA(c.author)} · ${escA(c.licence)}</a>`;
+}
 
 /* A plate for a name. `seedExtra` lets two things at the same venue differ.
    A photograph, where there is one, drawn over the plate so the frame is never

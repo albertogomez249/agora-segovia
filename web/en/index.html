@@ -16,7 +16,7 @@
   <div class="links">
     <a href="/en/" aria-current="page">IE · English</a>
     <a href="/es/">UVa · Español</a>
-    <a href="/negocios/" class="hide-sm">Negocios</a>
+    <a href="/negocios/" class="hide-sm" title="En español — para hosteleros de Segovia">Negocios <span class="lang-tag">ES</span></a>
     <a href="/student/" data-app="student" class="btn btn--bronze btn--sm" style="color:#FFFDF9">Get my card</a>
   </div>
 </div></nav>
@@ -191,6 +191,19 @@
         <p><b>Clubbing.</b> Juan de Borbón. Entry and two drinks before one.
           <br><span class="fine">Thu–Sat · 00:30–06:00</span></p></div>
     </div>
+    <!-- A tester did not just ask for more venues, she named them. Those names
+         are worth more than anything we would have guessed, so they go on the
+         page as what they are: the list we are going after, not a claim. -->
+    <div class="reveal" style="margin-top:40px;padding:22px 24px;border:1px solid var(--line);
+         border-radius:14px;background:var(--stone-00)">
+      <div class="eyebrow" style="margin:0 0 10px">WHAT YOU TOLD US TO GET NEXT</div>
+      <p class="sub" style="margin:0">We asked eighty-four students what was missing, and one of
+        them answered with names instead of adjectives: <b>Irish Theatre</b>, <b>Casanova</b>,
+        <b>Paloma's</b> and <b>Kofe Lab</b> — the places people here actually go, none of which
+        were in the prototype. They are the first four we are approaching, and they are not in
+        the app yet. If the one you would use is missing, tell us and it goes on this list.</p>
+    </div>
+
     <p class="sub reveal" style="font-size:13.5px;margin-top:22px;opacity:.75">
       <b>So that nobody is misled:</b> these are twelve real Segovia businesses, and
       <b>none of them has agreed to anything</b>. Every discount, price, opening time and review
@@ -259,6 +272,48 @@
   </div>
 </section>
 
+<!-- A short FAQ, asked for by name in testing. Every question here is one a
+     tester actually asked on 23 November, in their own words where possible. -->
+<section class="band stone" id="faq">
+  <div class="wrap">
+    <div class="eyebrow reveal">STRAIGHT ANSWERS</div>
+    <h2 class="big reveal">What people asked us when they tried it.</h2>
+    <div class="faq reveal">
+      <details><summary>Does it cost anything?</summary>
+        <p>No, and it will not. There is no fee, no subscription and no premium tier for students.
+          The businesses pay 8% of a sale when one happens, which is the whole model.</p></details>
+      <details><summary>Do I have to put money in to use it?</summary>
+        <p>No. A discount is a code you show at the till and you pay the venue as you always
+          would. Only things you book in advance — a ticket, a court, a table held for you — are
+          paid in the app, and that money sits with us until the venue confirms your code. If you
+          never turn up it comes back to you, and anything unspent is yours to withdraw.</p></details>
+      <details><summary>Is the discount taken off before or after I pay?</summary>
+        <p>Before. The price you see in the app is the price you pay. For a percentage off, the
+          figure shown is an example on a typical spend — the percentage comes off whatever you
+          actually buy.</p></details>
+      <details><summary>Who can see what I buy?</summary>
+        <p>Nobody, individually. Your campus page shows counts and never names, and never a group
+          smaller than five people, because in a city with two campuses a count that small
+          describes individuals rather than a trend.</p></details>
+      <details><summary>Why do you need my university email?</summary>
+        <p>Because that is what makes a student price a student price. It is also why these
+          prices are not on the open internet for everyone. We use it to verify you and to tell
+          you when something you asked about is live — nothing else.</p></details>
+      <details><summary>Can a business delete a bad review?</summary>
+        <p>No. Only a student who actually paid there can write one, a moderator reads it before
+          it appears, and the venue cannot remove it. A venue can pay to be promoted, and that
+          promotion is labelled; it cannot buy its way into top picks.</p></details>
+      <details><summary>What if the venue does not honour the price?</summary>
+        <p>Tell us and you are refunded in full. It is also the fastest way for a venue to be
+          removed: the whole thing only works if the price in the app is the price at the till.</p></details>
+      <details><summary>Is any of this real yet?</summary>
+        <p>The software is. The deals are not: every discount, price and review in the prototype
+          was written by us, and none of the businesses named has agreed to anything. We are
+          saying so here rather than letting you find out at a till.</p></details>
+    </div>
+  </div>
+</section>
+
 <section class="band ink">
   <div class="wrap close-cta">
     <div class="eyebrow">ONE EMAIL, ONCE</div>
@@ -276,7 +331,7 @@
 <footer class="foot"><div class="in wrap">
   <div><div class="mark">ÁGORA</div><p style="margin-top:10px">The student card of Segovia</p></div>
   <div><a href="/en/">IE · English</a><br><a href="/es/">UVa · Español</a><br>
-    <a href="/negocios/">For businesses</a></div>
+    <a href="/negocios/">For businesses <span class="lang-tag">ES</span></a></div>
   <div><a href="/student/" data-app="student">Student app</a><br><a href="/business/" data-app="business">Business console</a></div>
   <div style="max-width:34ch"><b style="color:var(--bronze-hi)">Demonstration.</b> The venues named are real Segovia businesses, but the discounts, prices and reviews are invented. None of this is an offer.</div>
   <div style="max-width:30ch">Example project for class. Figures come from our own field research

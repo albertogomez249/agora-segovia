@@ -141,3 +141,38 @@ footer.foot .mark{font-family:var(--display);font-size:17px;letter-spacing:.3em;
 #demoNote p{font-size:15px;line-height:1.6;color:var(--ink-03);margin:0 0 12px}
 #demoNote p.en{font-size:13.5px;color:var(--ink-04)}
 #demoNote .btn{margin-top:10px}
+
+/* --------------------------------------------------- language signposting
+   A tester followed the English/Spanish switcher into /negocios/ and found a
+   page entirely in Spanish with no warning, which she reported as a usability
+   barrier. The page is rightly in Spanish — it is for local venue owners — so
+   the link says so before you click it, and the page opens with an English
+   summary of the model for anyone who came to understand it rather than sign up. */
+.lang-tag{
+  display:inline-block;margin-left:5px;padding:1px 5px;border-radius:4px;
+  font-size:9.5px;font-weight:700;letter-spacing:.08em;vertical-align:1px;
+  background:var(--stone-03);color:var(--ink-03);
+}
+.nav .lang-tag{background:rgba(244,240,232,.14);color:var(--stone-02)}
+
+.enbar{background:var(--ink-00);color:var(--stone-02);padding:18px 0;
+  border-bottom:1px solid rgba(244,240,232,.1)}
+.enbar p{margin:0;font-size:14px;line-height:1.6;max-width:72ch}
+.enbar p + p{margin-top:8px}
+.enbar b{color:var(--stone-00);font-weight:600}
+.enbar a{color:var(--bronze-hi);text-decoration:none;border-bottom:1px solid currentColor}
+
+/* ------------------------------------------------------------------ faq ---
+   Asked for by name in testing. Closed by default so the page does not grow a
+   wall of text — the complaint right behind "add a FAQ" was that there was too
+   much to read before the point arrived. */
+.faq{margin-top:38px;max-width:72ch}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;padding:17px 30px 17px 0;position:relative;
+  font-size:16.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink-00)}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'';position:absolute;right:6px;top:50%;width:9px;height:9px;
+  border-right:1.6px solid var(--ink-04);border-bottom:1.6px solid var(--ink-04);
+  transform:translateY(-70%) rotate(45deg);transition:transform .2s ease}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(225deg)}
+.faq details p{margin:0 0 18px;font-size:14.5px;line-height:1.65;color:var(--ink-03);max-width:64ch}
