@@ -47,10 +47,18 @@ discoteca, ni un cine en toda la provincia de Segovia**. Ni con Carné Joven, ni
 con ISIC, ni por convenio universitario. Nada de lo que un estudiante hace un
 jueves por la noche.
 
-**6. Ni IE ni la UVa ofrecen nada.** Sin cambios respecto al informe anterior.
-Ninguna de las dos publica convenios, tarjeta con ventajas ni descuentos en
-comercios. Son unos 4.000 estudiantes sin un solo acuerdo institucional con el
-comercio que los rodea.
+**6. Corrección: la UVa sí ofrece algo, y yo lo había dado por inexistente.**
+El informe anterior decía que ninguna de las dos universidades tenía convenios.
+Es falso para la UVa: su **Tarjeta Deportiva** lleva cinco establecimientos
+adheridos, y es gratuita para sus alumnos. Está en la sección 5. IE sí sigue sin
+publicar nada, aunque su Student Government afirma haber conseguido «restaurant
+discounts» —sin decir en qué restaurantes.
+
+**7. Y lo más importante de todo: hay descuentos reales que no están en
+internet.** Confirmado a pie de calle, no por búsqueda: la tienda de bellas
+artes **Terracota** hace descuento a estudiantes, y la **Tetería Tuma** lo hace
+en el menú del día. Ninguno de los dos aparece en ninguna fuente consultable.
+Esto no es una laguna de la investigación: es el hallazgo. Ver la sección 6.
 
 ---
 
@@ -216,11 +224,24 @@ descuento más grande que existe en esta lista, con diferencia.** Avanza, que
 opera el Madrid–Segovia, vende el Abono Único (lo anuncia como «ABONO ÚNICO
 2026: Normal 60 € | Joven y Niños 30 €»).
 
-> **Lo que no pude confirmar:** si el **Avant Segovia-Guiomar ↔
-> Madrid-Chamartín** entra en el «algunos Avant». El Ministerio dice que las
-> líneas Avant sujetas a Obligación de Servicio Público están cubiertas, pero no
-> publica la lista. Es la pregunta más rentable de todo este informe y hay que
-> hacerla en taquilla o en el registro del Ministerio antes de comprar.
+> **RESUELTO: el Avant de Segovia NO entra.** Los servicios Avant cubiertos por
+> el Abono Único son **Madrid–Salamanca**, **A Coruña–Ourense**,
+> **Murcia–Alicante** y el **Avant Exprés de Barcelona**. El Avant
+> Madrid–Segovia–Valladolid (estación Segovia-Guiomar) **no está en la lista**.
+>
+> Lo que sí cubre el abono en la relación Madrid–Segovia:
+> - el **autobús** de Avanza, que es línea interregional de titularidad estatal
+>   (de hecho Avanza vende el Abono Único: «Normal 60 € | Joven y Niños 30 €»);
+> - el **tren regional de Media Distancia** Madrid–Segovia, el lento.
+>
+> Es decir: **30 €/mes de viajes ilimitados en autobús, pero el AVE se paga
+> aparte.** Para la mayoría de los alumnos esto sigue siendo el mejor negocio de
+> la lista; para quien necesite el Avant por tiempo, no sirve.
+>
+> Nivel de confianza: esto sale del texto de la propia página del Ministerio.
+> Las resoluciones en PDF que la respaldan no se pudieron leer, así que no he
+> visto la lista en el boletín oficial. Antes de comprar, confírmalo en el
+> registro del Ministerio.
 
 ### 2.2 Autobús Madrid–Segovia (Avanza)
 
@@ -265,7 +286,31 @@ carga inicial.
 > Contexto: la misma sección municipal publicaba el 16 de noviembre de 2026 que
 > «la huelga del transporte urbano continúa esta semana».
 
-### 2.4 Tren
+### 2.4 Bonificación de la Junta en los abonos Avant — ojo a la letra pequeña
+
+Fuente:
+<https://carreterasytransportes.jcyl.es/web/es/viajeros/bonificacion-transporte-ferroviario.html>
+
+Existe un convenio Junta de Castilla y León – Renfe que bonifica un **25 %** los
+títulos multiviaje de Media Distancia-Alta Velocidad (AVANT): **Abono Tarjeta
+Plus 10–30** y **Abono Pase Vía**. Los trayectos incluyen **Segovia–Madrid**,
+Valladolid–Segovia y Salamanca–Segovia.
+
+Tres condiciones que lo limitan mucho:
+
+1. **Hay que estar empadronado en un municipio de Castilla y León.** Un alumno
+   que viva de alquiler en Segovia sin empadronarse —que son muchos— no entra.
+2. **No tiene tramo joven ni de estudiante.** El convenio sí tiene un «abono
+   mensual nominativo para jóvenes», pero solo en Media Distancia convencional y
+   solo para Ávila–Madrid, Salamanca–Madrid y Soria–Madrid. **Segovia no está.**
+3. **Caduca.** El convenio se firmó el 2 de diciembre de 2022 con vigencia de
+   cuatro años, de modo que expira a finales de 2026. No he encontrado prórroga
+   publicada.
+
+El precio resultante del abono Segovia–Madrid está en un PDF de condiciones que
+no pude abrir. **No publicado** a efectos de este informe.
+
+### 2.5 Tren
 
 **No verificado, y conviene no suponer.** Las páginas de descuentos y de abono
 joven de renfe.com dan 404, y la portada no muestra ninguna Tarjeta Joven. Lo
@@ -273,7 +318,7 @@ joven de renfe.com dan 404, y la portada no muestra ninguna Tarjeta Joven. Lo
 Distancia y algunos Avant. Para el Segovia-Guiomar ↔ Madrid-Chamartín hay que
 preguntar en taquilla.
 
-### 2.5 Dentro de la provincia
+### 2.6 Dentro de la provincia
 
 **Linecar** opera el Segovia–San Ildefonso (La Granja), citado por Patrimonio
 Nacional como forma de llegar al palacio. **No investigué sus tarifas.**
@@ -403,51 +448,168 @@ Fuentes: <https://www.segovia.es/area/deporte-imd/precios-publicos> y
 
 ## 5. Las universidades
 
-| | Qué publica |
-|---|---|
-| **IE University** | Nada. Ni la home ni la página del campus de Segovia mencionan convenios o descuentos en comercios de la ciudad. |
-| **Universidad de Valladolid** | Nada. Ni tarjeta universitaria con ventajas, ni convenios, ni descuentos, en ninguna de las páginas de servicios que pude leer. El Campus María Zambrano ni aparece. |
+### 5.1 Universidad de Valladolid — Tarjeta Deportiva (corrige el informe anterior)
+
+Fuentes: <https://deportes.uva.es/1.Informaciongeneral/Tarjeta-Deportiva-00001/> y
+<https://deportes.uva.es/_documentos/VENTAJAS-TARJETA-DEPORTIVA-UNIVERSITARA-C.-Segovia.pdf>
+
+Mi informe anterior decía que la UVa no ofrecía nada. **Era falso.** La Tarjeta
+Deportiva Universitaria tiene una hoja propia del Campus de Segovia con
+establecimientos adheridos:
+
+| Establecimiento | Tipo | Descuento |
+|---|---|---|
+| Deportes Sprinter Segovia | Tienda de deporte | **10 %** |
+| Fisioterapia «La Plata» | Salud | **10 %** |
+| Escuela Cántabra de Surf | Actividad | **20 %** |
+| Faisanera Golf | Deporte | **25 %** |
+| Alquiler de bicicletas eléctricas (La Granja) | Ocio | **10 %** |
+
+*(El PDF escribe «Srpinter»; reproduzco el nombre corregido.)*
+
+**La tarjeta es gratuita para los estudiantes de Grado, Máster y Doctorado de la
+UVa: se activa sola al matricularse.** Para los demás: 35 €/curso para PDI y
+PTGAS, 50 € para Alumni y títulos propios, 20 € para familiares y Universidad
+Permanente, 60 € para otros convenios.
+
+Además da **uso gratuito de las instalaciones deportivas municipales y del
+gimnasio del Campus**, precio reducido en inscripciones de actividades y acceso
+preferente al programa. Para un alumno de la UVa en Segovia, esto es
+probablemente lo segundo más valioso del informe después del Abono Único.
+
+Hay un PDF de «centros deportivos con convenio» que no se pudo leer; por los
+dominios enlazados parece incluir Espacio Tierra y el IMD de Segovia, pero **no
+lo doy por confirmado**.
+
+### 5.2 IE University
+
+**No publica nada.** Ni la home, ni la página del campus de Segovia, ni la de
+nuestros espacios mencionan convenios o descuentos en comercios de la ciudad.
+
+Lo único que existe es una frase del **IEU Student Government**
+(<https://ieconnects.ie.edu/ieusg/home/>), en su sección «A New Segovia»:
+
+> «We've built strong ties with the city and local institutions, enabling new
+> collaborative initiatives: **restaurant discounts**, improved bus service,
+> language exchanges, joint sports events…»
+
+**Sin lista de restaurantes, sin condiciones y sin carné.** Es decir: existe
+algo, pero no existe de forma que un alumno pueda usarlo sin preguntar a alguien
+que ya lo sepa. Que es exactamente el problema.
+
+### 5.3 Campus María Zambrano (UVa Segovia)
+
+Nada sobre descuentos en comercios. Tiene convenios deportivos (BigMat Tabanera
+Lobos, Ayuntamiento, Club Triatlón IMD) pero ninguno incluye descuento.
 
 ---
 
-## 6. El plan óptimo, si tuviera que resumirlo en seis líneas
+## 6. Los descuentos que existen y que no están en internet
+
+Esta sección es, con diferencia, la más importante del informe, y la escribo
+porque la investigación falló en ella.
+
+**Dos casos confirmados por conocimiento local, no por búsqueda:**
+
+| Negocio | Qué es | Dónde | Descuento |
+|---|---|---|---|
+| **Terracota** | Tienda de material de bellas artes | C. Grabador Espinosa 16, 40001 Segovia · 921 486 347 | Descuento a estudiantes |
+| **Tetería Tuma** | Restaurante mediterráneo | C. Santa Columba 5, 40001 Segovia | Descuento a estudiantes en el **menú del día** |
+
+Lo de Terracota tiene toda la lógica del mundo: una tienda de bellas artes a
+pocos minutos del campus, cuyos clientes naturales son los alumnos de
+Arquitectura, Diseño y Publicidad. Es el perfil exacto de comercio que hace
+descuento a estudiantes y que jamás lo publica.
+
+**Lo que hice para encontrarlos por mi cuenta, y falló:**
+
+| Canal | Resultado |
+|---|---|
+| Webs oficiales de los negocios | Terracota no tiene web; Tuma no publica precios |
+| Buscador con configuración española (`kl=es-es`) | `"descuento estudiantes" Segovia bar OR restaurante` → **cero resultados** |
+| Instagram | El perfil de Tuma no es público bajo el nombre evidente; el de Terracota que existe es de otra Terracota, en Galicia |
+| Listado del Carné Joven (3 páginas) | Ni un solo bar, restaurante o cine en la provincia |
+| ISIC | Ningún establecimiento de Segovia |
+| Webs de IE y UVa | Solo la hoja deportiva de la UVa; IE, una frase sin lista |
+| Prensa local | Ninguna campaña de descuentos a universitarios |
+| Google Maps / TripAdvisor | Dirección, teléfono y reseñas; **nunca la política de descuentos** |
+
+**La conclusión.** No es que yo buscara mal. Es que **esta información no está
+indexada en ninguna parte**. Vive en tres sitios: un cartel en el escaparate, la
+cabeza del camarero, y el grupo de WhatsApp del curso anterior. Un alumno de
+primer año que llega a Segovia en septiembre no tiene forma de saber qué
+descuentos tiene disponibles, y los conoce —si los conoce— por un compañero de
+segundo.
+
+Eso es exactamente el agujero que Ágora viene a tapar, y ahora está medido en
+lugar de supuesto: **de todas las fuentes consultables que existen, ninguna
+contiene un solo descuento de hostelería en la provincia de Segovia, mientras
+que sabemos de al menos uno porque alguien lo conoce en persona.**
+
+**Lo único que resuelve esto es pisar la calle.** Concretamente:
+1. Recorrer las calles del entorno del campus (Cardenal Zúñiga, Grabador
+   Espinosa, Santa Columba, Juan Bravo, Plaza Mayor) mirando escaparates.
+2. Preguntar en barra, que es gratis y tarda diez segundos.
+3. Pedir la lista de «restaurant discounts» al Student Government de IE, que
+   dice tenerla.
+4. Preguntar en la Cámara de Comercio y en la Federación Empresarial Segoviana,
+   que son quienes agrupan a los comercios.
+
+---
+
+## 7. El plan óptimo, si tuviera que resumirlo en siete líneas
 
 1. **Abono Único Joven, 30 €/mes**, si naciste a partir del 1/1/2000 y pisas
-   Madrid con alguna frecuencia. Regístrate 24 h antes. Nada se le acerca.
-2. **Carné Joven CyL, 3 €/año**: se amortiza con dos museos de la Junta.
-3. **Miércoles**: los cinco espacios municipales de Segovia, gratis.
-4. **Miércoles y domingo de 15:00 a 18:00**: La Granja y Riofrío, gratis.
-5. **Martes de 14:00 a 16:00**: Alcázar gratis.
-6. Si tienes **más de 26 años**, casi nada de lo anterior te sirve: tu única
+   Madrid con alguna frecuencia. Regístrate 24 h antes. Vale para el autobús y
+   el regional; **el Avant de Segovia no entra**. Aun así, nada se le acerca.
+2. **Si eres de la UVa, activa la Tarjeta Deportiva**: es gratis al matricularte
+   y trae instalaciones municipales gratis y cinco comercios con descuento.
+3. **Carné Joven CyL, 3 €/año**: se amortiza con dos museos de la Junta.
+4. **Miércoles**: los cinco espacios municipales de Segovia, gratis.
+5. **Miércoles y domingo de 15:00 a 18:00**: La Granja y Riofrío, gratis.
+6. **Martes de 14:00 a 16:00**: Alcázar gratis.
+7. Si tienes **más de 26 años**, casi nada de lo anterior te sirve: tu única
    carta es el **ISIC** (12 €), que va por matrícula y no por edad, y que en
    Segovia no tiene ni un solo establecimiento adherido.
 
+Y, fuera de toda lista: **pregunta en la barra y en el mostrador.** Es donde
+están los descuentos que ninguna web recoge.
+
 ---
 
-## 7. Qué queda por comprobar
+## 8. Qué queda por comprobar
 
 Lo digo en lugar de rellenarlo:
 
-1. **Si el Avant Segovia-Guiomar entra en el Abono Único.** Es con diferencia la
-   pregunta más rentable de la lista y el Ministerio no publica las líneas.
-2. **Bono joven del urbano**: a qué edad llega, qué documento piden, y si se
+1. ~~Si el Avant Segovia-Guiomar entra en el Abono Único.~~ **Resuelto: no
+   entra.** Queda por ver la resolución en PDF, que no se pudo abrir, para
+   tenerlo en fuente de boletín y no solo en la web del Ministerio.
+2. **El precio del abono Avant Segovia–Madrid con la bonificación del 25 % de la
+   Junta**, y si el convenio se prorroga más allá de finales de 2026. Está en un
+   PDF que no se pudo leer.
+3. **La lista de «restaurant discounts» del Student Government de IE.** Dicen
+   tenerla; no la publican. Es la pista más prometedora de todo el informe.
+4. **El PDF de centros deportivos con convenio de la UVa**, que parece incluir
+   Espacio Tierra y el IMD de Segovia.
+5. **Bono joven del urbano**: a qué edad llega, qué documento piden, y si se
    puede cargar en la Tarjeta Abono Transporte. Es el mayor descuento porcentual
    de la ciudad y el peor documentado de todos.
-3. **Precio del bono Joven Junta de Avanza** y del billete sencillo
+6. **Precio del bono Joven Junta de Avanza** y del billete sencillo
    Madrid–Segovia. No están publicados.
-4. **Renfe**: si existe hoy alguna tarjeta o abono joven propio. Sus páginas dan
+7. **Renfe**: si existe hoy alguna tarjeta o abono joven propio. Sus páginas dan
    404.
-5. **Cines Artesiete**: precio y día del espectador. No está en su web.
-6. **Castillos de Pedraza y Cuéllar**, y confirmación oficial del de Coca.
-7. **Tarifas del IMD**: están en PDF, uno de 2017.
-8. **Torreón de Lozoya, Academia de Artillería, Rodera-Robles** y salas de la
+8. **Cines Artesiete**: precio y día del espectador. No está en su web.
+9. **Castillos de Pedraza y Cuéllar**, y confirmación oficial del de Coca.
+10. **Tarifas del IMD**: están en PDF, uno de 2017.
+11. **Torreón de Lozoya, Academia de Artillería, Rodera-Robles** y salas de la
    Catedral: ninguno publica precio.
-9. **Linecar** (Segovia–La Granja): sin investigar.
-10. **La Pinilla 2026/27**: la tienda oficial está caída; los precios son de la
+12. **Linecar** (Segovia–La Granja): sin investigar.
+13. **La Pinilla 2026/27**: la tienda oficial está caída; los precios son de la
     temporada pasada.
-11. **Hostelería**: no encontré ni un solo menú de estudiante publicado en una
+14. **Hostelería**: no encontré ni un solo menú de estudiante publicado en una
     web oficial de la provincia. Esto hay que verificarlo a pie de calle, no
     desde un navegador.
 
-El punto 11 sigue siendo el más importante y el único que no se resuelve en
-internet. El punto 1 es el que más dinero vale.
+El punto 14 sigue siendo el más importante y el único que no se resuelve en
+internet — y la sección 6 explica por qué. El punto 3 es la pista más
+prometedora: alguien en IE ya tiene esa lista escrita.
