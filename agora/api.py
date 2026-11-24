@@ -531,6 +531,134 @@ def venue(ctx, body):
     }
 
 
+CALENDAR_DAYS = 14
+
+
+def calendar(ctx, body):
+    """What is on, by day, for the next fortnight.
+
+    "Maybe it's better to set up a calendar so customers can get a better idea
+    of the different discount dates." Leisure runs on dates — a premiere on
+    Thursday, a home game on Sunday, two-for-one Tuesday to Thursday — and the
+    app only ever answered "what is near me", never "what is on on Friday".
+
+    Events have a date of their own. An offer does not: it has a window, which
+    is the same answer to the same question, so both are here and each says
+    which it is.
+    """
+    now = db.now()
+    until = now + CALENDAR_DAYS * 86400
+    leis = leisure.valid(body.get("leisure", ""))
+    if body.get("leisure") and not leisure.known(body.get("leisure")):
+        raise ApiError("There is no category called '%s'." % body.get("leisure"))
+
+    eargs = [now, until]
+    esql = ("SELECT e.*, b.name AS business_name, b.zone, b.address "
+            "FROM events e JOIN businesses b ON b.id=e.business_id "
+            "WHERE e.active=1 AND e.starts_at>=? AND e.starts_at<=?")
+    if leis:
+        esql += " AND e.leisure=?"; eargs.append(leis)
+    events = [decorate_event(e) for e in db.q(esql + " ORDER BY e.starts_at ASC", eargs)]
+
+    days = {}
+    for e in events:
+        key = time.strftime("%Y-%m-%d", time.localtime(e["starts_at"]))
+        d = days.setdefault(key, {"date": key, "events": [],
+                                  "label": time.strftime("%a %d %b", time.localtime(e["starts_at"]))})
+        d["events"].append(e)
+
+    oargs = []
+    osql = ("SELECT o.*, b.name AS business_name, b.zone, b.address "
+            "FROM offers o JOIN businesses b ON b.id=o.business_id "
+            "WHERE o.active=1 AND o.window_label<>''")
+    if leis:
+        osql += " AND o.leisure=?"; oargs.append(leis)
+    windows = [decorate_offer(o) for o in
+               db.q(osql + " ORDER BY o.student_cents ASC", oargs)]
+
+    return {"days": [days[k] for k in sorted(days)],
+            "windows": windows,
+            "horizon_days": CALENDAR_DAYS}
+
+
+# ------------------------------------------------------------------- plans
+
+def _plan_view(p, me_id=None):
+    members = db.q(
+        "SELECT s.name, pm.student_id FROM plan_members pm "
+        "JOIN students s ON s.id=pm.student_id WHERE pm.plan_id=? "
+        "ORDER BY pm.joined_at", (p["id"],))
+    what, when, venue = "", "", ""
+    if p["ref_type"] == "event":
+        e = db.q("SELECT e.*, b.name AS business_name FROM events e "
+                 "JOIN businesses b ON b.id=e.business_id WHERE e.id=?", (p["ref_id"],), one=True)
+        if e:
+            e = decorate_event(e)
+            what, when, venue = e["title_en"], e["when"], e["business_name"]
+    else:
+        o = db.q("SELECT o.*, b.name AS business_name FROM offers o "
+                 "JOIN businesses b ON b.id=o.business_id WHERE o.id=?", (p["ref_id"],), one=True)
+        if o:
+            what, when, venue = o["title_en"], o["window_label"] or "Any day", o["business_name"]
+    return {
+        "id": p["id"], "code": p["code"], "ref_type": p["ref_type"], "ref_id": p["ref_id"],
+        "what": what, "when": when, "venue": venue, "note": p["note"],
+        # First names only, the same rule the reviews follow.
+        "who": [(m["name"] or "").split(" ")[0] for m in members],
+        "count": len(members),
+        "mine": me_id is not None and p["student_id"] == me_id,
+    }
+
+
+def create_plan(ctx, body):
+    """Make a plan out of something and get a code to hand round."""
+    sub = auth(ctx, "student")
+    ref_type = body.get("ref_type")
+    if ref_type not in ("event", "offer"):
+        raise ApiError("A plan is made of an event or an offer")
+    try:
+        ref_id = int(body.get("ref_id"))
+    except (TypeError, ValueError):
+        raise ApiError("Which one?")
+    table = "events" if ref_type == "event" else "offers"
+    if not db.q("SELECT 1 FROM %s WHERE id=? AND active=1" % table, (ref_id,), one=True):
+        raise ApiError("That is no longer on")
+
+    # One plan per person per thing: making a second is almost always a
+    # mis-tap, and two codes for one night is how people end up split up.
+    existing = db.q("SELECT * FROM plans WHERE student_id=? AND ref_type=? AND ref_id=?",
+                    (sub["id"], ref_type, ref_id), one=True)
+    if existing:
+        return {"plan": _plan_view(existing, sub["id"]), "created": False}
+
+    code = db.code6()
+    pid = db.run("INSERT INTO plans(student_id,ref_type,ref_id,code,note,created_at) "
+                 "VALUES(?,?,?,?,?,?)",
+                 (sub["id"], ref_type, ref_id, code, (body.get("note") or "")[:140], db.now()))
+    db.run("INSERT INTO plan_members(plan_id,student_id,joined_at) VALUES(?,?,?)",
+           (pid, sub["id"], db.now()))
+    p = db.q("SELECT * FROM plans WHERE id=?", (pid,), one=True)
+    return {"plan": _plan_view(p, sub["id"]), "created": True}
+
+
+def join_plan(ctx, body):
+    sub = auth(ctx, "student")
+    code = (body.get("code") or "").strip()
+    p = db.q("SELECT * FROM plans WHERE code=?", (code,), one=True)
+    if not p:
+        raise ApiError("No plan with that code")
+    db.run("INSERT OR IGNORE INTO plan_members(plan_id,student_id,joined_at) VALUES(?,?,?)",
+           (p["id"], sub["id"], db.now()))
+    return {"plan": _plan_view(p, sub["id"])}
+
+
+def my_plans(ctx, body):
+    sub = auth(ctx, "student")
+    rows = db.q("SELECT p.* FROM plans p JOIN plan_members pm ON pm.plan_id=p.id "
+                "WHERE pm.student_id=? ORDER BY p.created_at DESC LIMIT 20", (sub["id"],))
+    return {"plans": [_plan_view(p, sub["id"]) for p in rows]}
+
+
 def list_jobs(ctx, body):
     where, args = ["j.active=1"], []
     if body.get("kind"):
@@ -1268,6 +1396,10 @@ def _draft_job(state):
 
 ROUTES = {
     ("GET",  "/api/health"): health,
+    ("GET",  "/api/calendar"): calendar,
+    ("GET",  "/api/plans"): my_plans,
+    ("POST", "/api/plans"): create_plan,
+    ("POST", "/api/plans/join"): join_plan,
     ("POST", "/api/auth/request"): auth_request,
     ("POST", "/api/auth/verify"): auth_verify,
     ("POST", "/api/auth/logout"): logout,

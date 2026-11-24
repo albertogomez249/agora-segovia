@@ -15,14 +15,30 @@
   --stone-04:#C9BFAC;
 
   /* --- ink -------------------------------------------------------------- */
+  /* --- contrast ------------------------------------------------------
+     Measured, not judged by eye. --ink-04 was #78828E, which is 3.43:1 on
+     the travertine and 3.11:1 on stone-02 — under the 4.5:1 that small text
+     needs — and it is the colour of nearly every secondary line in the
+     product: the second line of every row, opening hours, how big the
+     discount is. This app is read on a phone in the street in Segovia, in
+     sunlight, which is the worst case for a ratio that was already failing
+     indoors. #5A6470 clears it on all three stones (5.72 / 5.29 / 4.80) and
+     is still clearly the quiet colour.
+     Bronze has the same problem as text: #9C7246 is 3.76:1 on travertine, so
+     it keeps the surfaces and marks it was chosen for and text that has to be
+     read takes --bronze-text. White on the bronze button was 4.21:1, which is
+     why the button fill is now --bronze-lo at 5.32:1.
+     Oxblood, the price, was already fine at 6.60:1 — the signature colour
+     needed nothing. */
   --ink-00:#15181C;
   --ink-01:#1F242A;
   --ink-02:#2B323A;
   --ink-03:#4A535E;
-  --ink-04:#78828E;
+  --ink-04:#5A6470;
 
   /* --- metal & earth ---------------------------------------------------- */
-  --bronze:#9C7246;
+  --bronze:#9C7246;        /* surfaces, borders, marks — not text on light */
+  --bronze-text:#7E5932;   /* bronze where it has to be READ */
   --bronze-lo:#8A6239;
   --bronze-hi:#C19A68;
   --bronze-wash:#F0E8DC;
@@ -70,6 +86,44 @@
   --press-card:scale(.988);
 }
 
+/* --- the same tokens, on ink ------------------------------------------
+   A quiet grey cannot serve both stones and ink. #78828E was 4.56:1 on the
+   dark panel and 3.43:1 on travertine: passing on one surface, failing on the
+   other, and the product mostly lives on travertine — so --ink-04 went darker
+   and the dark verification screen, which inherits these tokens, dropped to
+   2.96:1. Fixing one surface broke the other, which is what a single value for
+   two backgrounds always does.
+   So the dark surfaces redefine the tokens rather than the components
+   overriding colours one by one: anything inside them reads the right value
+   without knowing it is on ink. 7.12:1 and 6.86:1 respectively. */
+/* Selected by class, never by id. The first version of this rule listed
+   `#gate`, and the student's gate is ink while the moderation console's gate
+   is travertine — the same id on opposite surfaces. Light-on-dark values
+   landed on a light panel and took its text to 2.20:1, which is worse than
+   anything this rule was written to fix. A surface has to declare itself. */
+.on-ink,aside,header.bar,.mcard,.brandbar,header.hero,section.band.ink,footer.foot{
+  --ink-04:#9AA5B1;
+  --ink-03:#B2BBC5;
+  --bronze-text:var(--bronze-hi);
+}
+/* And back again. A dark band is not dark all the way down: the home page
+   sets light cards inside one, and tokens cascade, so the light-on-dark greys
+   were inherited straight onto travertine and took that text to 1.85:1 — the
+   rule meant to fix contrast causing a worse failure two levels in. Any light
+   surface nested in a dark one restores the root values. This is the third
+   time in this pass that a surface rule leaked into a surface of the opposite
+   kind; a region cannot be assumed to be one colour all the way down.
+   The band taught the same lesson twice: `section.band` is dark on the home
+   page and travertine on the Spanish one, and the project already said so —
+   the dark ones carry `.ink`. The convention existed and the selector simply
+   did not read it. */
+.on-ink .on-stone,.on-stone,
+section.band.ink a.door,section.band.ink .f,header.hero a.door,footer.foot .f{
+  --ink-04:#5A6470;
+  --ink-03:#4A535E;
+  --bronze-text:#7E5932;
+}
+
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
 body{
@@ -96,7 +150,7 @@ svg{display:block}
 .inscript{
   font-family:var(--display);
   font-size:10px;text-transform:uppercase;letter-spacing:.34em;
-  color:var(--bronze);line-height:1;
+  color:var(--bronze-text);line-height:1;
   margin-right:-.34em;  /* cancel the trailing letter-space */
 }
 .inscript.dim{color:var(--ink-04)}
@@ -158,10 +212,10 @@ svg{display:block}
 }
 .btn:active{transform:var(--press-ctl)}
 .btn:disabled{opacity:.4;pointer-events:none}
-.btn--bronze{background:var(--bronze);color:#FFFDF9}
+.btn--bronze{background:var(--bronze-lo);color:#FFFDF9}
 .btn--quiet{background:transparent;color:var(--ink-02);border:1px solid var(--line)}
-.btn--plain{background:transparent;color:var(--bronze);min-height:44px;padding:0 6px;font-size:15px}
-.btn--sm{min-height:38px;padding:0 14px;font-size:14px;border-radius:9px}
+.btn--plain{background:transparent;color:var(--bronze-text);min-height:44px;padding:0 6px;font-size:15px}
+.btn--sm{min-height:44px;padding:0 14px;font-size:14px;border-radius:9px}
 .btn--block{display:flex;width:100%}
 .btn svg{width:18px;height:18px;flex:0 0 auto;stroke-width:1.45}
 .btn .ld{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
@@ -198,14 +252,22 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.5}
 /* --------------------------------------------------------------- chips --- */
 .chiprow{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .chiprow::-webkit-scrollbar{display:none}
+/* A chip is 34px tall because that is what reads well in a row of them, and
+   34px is not a target: the guideline is 44, and these are the main filter on
+   the main screen. So the hit area is grown without growing the drawing — a
+   transparent band above and below, which costs nothing visually and gives the
+   thumb the 44 it needs. The row's own vertical padding keeps neighbours from
+   overlapping. */
 .chip{
-  flex:0 0 auto;min-height:34px;padding:0 14px;border-radius:999px;
+  flex:0 0 auto;min-height:34px;padding:0 14px;border-radius:999px;position:relative;
   display:inline-flex;align-items:center;
   font-size:13px;font-weight:500;color:var(--ink-03);
   background:transparent;border:1px solid var(--line);
   transition:background .16s var(--tap),color .16s var(--tap),border-color .16s var(--tap);
 }
 .chip[aria-pressed="true"]{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
+.chip::after{content:'';position:absolute;left:0;right:0;top:50%;
+  height:44px;transform:translateY(-50%)}
 .chip:active{transform:var(--press-ctl)}
 .chip[disabled]{opacity:.45}
 
@@ -274,7 +336,7 @@ textarea.inp{min-height:84px;resize:vertical;line-height:1.5}
    squared off every chip the moment it took focus. */
 :focus-visible{outline:2px solid var(--bronze);outline-offset:3px}
 @media (hover:hover) and (pointer:fine){
-  .btn--bronze:hover{background:var(--bronze-lo)}
+  .btn--bronze:hover{background:#7E5932}
   .btn--quiet:hover{background:var(--stone-02)}
   .btn--plain:hover{color:var(--bronze-lo)}
   .chip:hover{border-color:var(--ink-04)}

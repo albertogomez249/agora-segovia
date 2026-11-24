@@ -154,6 +154,34 @@ CREATE TABLE IF NOT EXISTS reviews (
 
 CREATE INDEX IF NOT EXISTS idx_review_status ON reviews(status, business_id);
 
+-- Going together. Students asked for this in four different words — see who
+-- your friends are going to, invite someone to an event, book plans together,
+-- share codes — and one said plainly she would not use the app if her friends
+-- did not. It is the one feature where the obvious implementation is the wrong
+-- one: a friends graph, or "people like you also went", would mean telling
+-- students about each other's movements, and this product promises counts and
+-- never names. So a plan is a thing you make and hand out. Nothing is inferred
+-- from anybody's history, and the only people who learn you are going are the
+-- ones you gave the code to.
+CREATE TABLE IF NOT EXISTS plans (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id INTEGER NOT NULL REFERENCES students(id),
+  ref_type TEXT NOT NULL,                  -- event | offer
+  ref_id INTEGER NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  note TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS plan_members (
+  plan_id INTEGER NOT NULL REFERENCES plans(id),
+  student_id INTEGER NOT NULL REFERENCES students(id),
+  joined_at INTEGER NOT NULL,
+  PRIMARY KEY (plan_id, student_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_ref ON plans(ref_type, ref_id);
+
 CREATE TABLE IF NOT EXISTS assistant_state (
   business_id INTEGER PRIMARY KEY REFERENCES businesses(id),
   state TEXT NOT NULL DEFAULT '{}',

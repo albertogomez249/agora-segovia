@@ -37,7 +37,7 @@ section.band{padding:clamp(56px,8vw,92px) 0;border-bottom:1px solid var(--line)}
 section.band.ink{background:var(--ink-00);color:var(--stone-01);border-bottom:0}
 section.band.stone{background:var(--stone-02)}
 .eyebrow{font-family:var(--display);font-size:10.5px;text-transform:uppercase;
-  letter-spacing:.34em;color:var(--bronze);margin:0 0 16px}
+  letter-spacing:.34em;color:var(--bronze-text);margin:0 0 16px}
 .ink .eyebrow{color:var(--bronze-hi)}
 h2.big{font-family:var(--display);font-size:clamp(28px,4.2vw,44px);line-height:1.1;max-width:20ch}
 .ink h2.big{color:var(--stone-00)}
@@ -108,7 +108,7 @@ p.sub{font-size:17px;line-height:1.6;color:var(--ink-03);margin:18px 0 0;max-wid
 .door .meat h3{display:block;font-family:var(--display);font-size:23px;line-height:1.15;margin:0 0 9px}
 .door .meat p{display:block;font-size:14.5px;line-height:1.6;color:var(--ink-03);min-height:70px}
 .door .go{display:inline-flex;align-items:center;gap:7px;margin:14px 0 0;
-  color:var(--bronze);font-size:14.5px;font-weight:600}
+  color:var(--bronze-text);font-size:14px;font-weight:600}
 .door .go svg{width:15px;height:15px}
 
 /* closing call */

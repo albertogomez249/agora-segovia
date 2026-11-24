@@ -264,30 +264,28 @@ async function paintTopPicks(pins) {
   });
 }
 
-/* Pins closer together than they are wide cannot both be tapped, so any cluster
-   within about 40 metres is fanned onto a small circle around its own centre.
-   The venue a pin belongs to does not move — only the marker does, far enough
-   to be pressed and not far enough to point at the wrong street. */
-function fanOut(pins) {
-  const EPS = 0.00045;                       // ~40 m at this latitude
-  const out = pins.map(p => [p.lat, p.lng]);
-  const done = new Set();
-  pins.forEach((p, i) => {
-    if (done.has(i)) return;
-    const group = [i];
-    for (let j = i + 1; j < pins.length; j++) {
-      if (done.has(j)) continue;
-      if (Math.abs(pins[j].lat - p.lat) < EPS && Math.abs(pins[j].lng - p.lng) < EPS) group.push(j);
-    }
-    group.forEach(k => done.add(k));
-    if (group.length === 1) return;
-    const r = EPS * 0.8;
-    group.forEach((k, n) => {
-      const a = (2 * Math.PI * n) / group.length;
-      out[k] = [p.lat + r * Math.sin(a) * 0.62, p.lng + r * Math.cos(a)];
-    });
-  });
-  return out;
+/* Overlapping pins used to be solved here by moving the markers themselves
+   onto a small circle. declutter() below does it better: it leaves every
+   marker on its real doorway and steps only the label aside, with a hairline
+   back to the point it belongs to. Two mechanisms fighting over the same pins
+   moved them twice, so this one is gone and the geography is honest again. */
+
+/* The box that holds where the venues actually are, rather than the box that
+   holds all of them. Takes the middle of the spread on each axis and ignores
+   the furthest tenth at either end, so one venue on a ring road cannot zoom
+   the whole city out. Never returns less than a few streets' worth, or a lone
+   pin would open at maximum zoom on its own doorstep. */
+function coreBounds(pins) {
+  const pick = (vals, q) => vals[Math.min(vals.length - 1,
+                                          Math.max(0, Math.round((vals.length - 1) * q)))];
+  const lats = pins.map(p => p.lat).sort((a, b) => a - b);
+  const lngs = pins.map(p => p.lng).sort((a, b) => a - b);
+  let [s, n] = [pick(lats, 0.1), pick(lats, 0.9)];
+  let [w, e] = [pick(lngs, 0.1), pick(lngs, 0.9)];
+  const MIN = 0.006;                         // roughly half a kilometre
+  if (n - s < MIN) { const m = (n + s) / 2; s = m - MIN / 2; n = m + MIN / 2; }
+  if (e - w < MIN) { const m = (e + w) / 2; w = m - MIN / 2; e = m + MIN / 2; }
+  return L.latLngBounds([s, w], [n, e]);
 }
 
 function drawMap(pins, centre) {
@@ -321,14 +319,8 @@ function drawMap(pins, centre) {
     attribution: '&copy; OpenStreetMap contributors',
   }).addTo(MAP);
 
-  // Venues in the old town sit within a few metres of each other, and their
-  // pins landed on top of one another: two testers reported markers in the
-  // centre they simply could not tap. Pins that collide are fanned out around
-  // the point they share, so every one of them has its own thumb-sized target.
-  const spread = fanOut(pins);
-
   MARKS = pins.map((p, i) => {
-    const m = L.marker(spread[i], {
+    const m = L.marker([p.lat, p.lng], {
       icon: L.divIcon({
         className: 'pin', iconSize: null,
         // "€5 for what?" was the second most reported problem of the session.
@@ -351,9 +343,14 @@ function drawMap(pins, centre) {
     if (!MAP) return;
     MAP.invalidateSize();
     if (!pins.length) return;
-    // Asymmetric on purpose: the chips float over the top of the stage and a
-    // pin tucked under them is a price nobody can read.
-    MAP.fitBounds(L.latLngBounds(spread), {
+    // Fitting every pin means fitting the two in Nueva Segovia, and the map
+    // opens zoomed so far out that the ten in the old town are a single clump
+    // of overlapping prices — the opposite of a front door that answers "what
+    // is near me". So the opening view frames where the venues actually are,
+    // and the outliers are a scroll away rather than deciding the zoom.
+    // Asymmetric padding on purpose: the chips float over the top of the stage
+    // and a pin tucked under them is a price nobody can read.
+    MAP.fitBounds(coreBounds(pins), {
       paddingTopLeft: [58, 80], paddingBottomRight: [58, 44], maxZoom: 16,
     });
   };
@@ -779,6 +776,80 @@ const ZONE = { centro: 'Old town', nueva: 'Nueva Segovia', sanlo: 'San Lorenzo',
    category, see a price, pay. "Buy" is the two things you take away with you,
    "Go out" the five you turn up to — and the only real difference is that
    going out has a date on it. */
+/* Two ways of reading the same thing: by what it is, or by when it is. The
+   toggle is drawn by both screens so it never moves between them. */
+const viewToggle = (now) => `
+  <div class="filters" style="padding-bottom:14px"><div class="chiprow">
+    <button class="chip" data-view="list" aria-pressed="${now === 'list'}">Everything on</button>
+    <button class="chip" data-view="cal" aria-pressed="${now === 'cal'}">By date</button>
+  </div></div>`;
+
+const wireViewToggle = (v) => v.querySelectorAll('[data-view]').forEach(b => b.onclick = () => {
+  PREF.outView = b.dataset.view; savePref(); render();
+});
+
+/* What is on, day by day. Events carry their own date; an offer carries a
+   window, which answers the same question — "can I use this on Thursday" — so
+   both are here, each saying which kind it is. */
+async function calendarScreen(v, sel, cats, turn) {
+  const d = await Agora.get('/api/calendar', sel ? { leisure: sel } : {});
+  if (stale(turn)) return;
+
+  v.innerHTML =
+    head('II · GO·OUT', 'What is on',
+      `Everything with a date on it for the next ${d.horizon_days} days, and the discounts `
+      + 'that run on set days of the week.') +
+    viewToggle('cal') +
+    demoNote() +
+    guestStrip('buy a ticket from your phone and show the code at the door') +
+    `<div class="filters">${chiprow(sel, cats, 'g')}</div>` +
+    (d.days.length
+      ? `<div class="stagger">${d.days.map((day, i) => `
+          <div class="calday" style="animation-delay:${i * 30}ms">
+            <div class="calday-h"><span class="dayname">${esc(day.label)}</span>
+              <span class="t-meta">${day.events.length} on</span></div>
+            <div class="rows">${day.events.map(e => `
+              <button class="row-item" data-ce="${e.id}">
+                <span class="lead">${monogram(e.venue || e.business_name)}</span>
+                <span class="body">
+                  <span class="ttl">${esc(e.title_en)}</span>
+                  <span class="sub">${esc(e.when)} · ${esc(e.venue || e.business_name)}</span>
+                  <span class="sub cut">${e.left} of ${e.capacity} left</span>
+                </span>
+                <span class="tail"><span class="price">${money(e.student_eur)}</span><br>
+                  <span class="was">${money(e.list_eur)}</span></span>
+              </button>`).join('')}</div>
+          </div>`).join('')}</div>`
+      : emptyState('arch', 'Nothing with a date on it',
+          'No event in the next fortnight in this category.')) +
+    (d.windows.length ? `
+      <div class="inscript dim" style="margin:26px 0 4px">ON SET DAYS, EVERY WEEK</div>
+      <p class="t-meta" style="margin:0 0 12px">Discounts that are not an event but only
+        run on certain days.</p>
+      <div class="rows">${d.windows.map(o => `
+        <button class="row-item" data-co="${o.id}">
+          <span class="lead">${monogram(o.business_name)}</span>
+          <span class="body">
+            <span class="ttl">${esc(o.title_en.replace(/ - .*$/, ''))}</span>
+            <span class="sub">${esc(o.business_name)}</span>
+            <span class="sub cut">${esc(o.window_label)}</span>
+          </span>
+          <span class="tail">${priceTail(o)}</span>
+        </button>`).join('')}</div>` : '') +
+    '<div style="height:24px"></div>';
+
+  wireGuest('Verify once.<br><b>Then every student price in Segovia is one tap away.</b>');
+  wireViewToggle(v);
+  v.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
+    PREF['sel_out'] = b.dataset.g; savePref(); render();
+  });
+  const evAll = d.days.flatMap(x => x.events);
+  v.querySelectorAll('[data-ce]').forEach(b => b.onclick = () =>
+    evSheet(evAll.find(e => e.id == b.dataset.ce)));
+  v.querySelectorAll('[data-co]').forEach(b => b.onclick = () =>
+    offer(d.windows.find(o => o.id == b.dataset.co)));
+}
+
 async function listScreen(v, group, turn) {
   const cats = catsIn(group);
   let sel = PREF['sel_' + group] || '';
@@ -800,8 +871,14 @@ async function listScreen(v, group, turn) {
     : ['II · GO·OUT', 'Go out for less',
        'Clubbing, football, theatre, cinema, and sport you turn up to and play together.'];
 
+  // Going out happens on a date. A tester asked for a calendar so you can see
+  // the different discount dates, and she was right that a flat list hides
+  // the one question this screen should answer: what is on, on Friday.
+  if (group === 'out' && PREF.outView === 'cal') return calendarScreen(v, sel, cats, turn);
+
   v.innerHTML =
     head(copy[0], copy[1], copy[2]) +
+    (group === 'out' ? viewToggle('list') : '') +
     demoNote() +
     guestStrip('pay from your phone and keep what you save') +
     `<div class="filters">${chiprow(sel, cats, 'g')}</div>` +
@@ -842,6 +919,7 @@ async function listScreen(v, group, turn) {
           'No student price in this category right now. Try another one.') : '');
 
   wireGuest('Verify once.<br><b>Then every student price in Segovia is one tap away.</b>');
+  wireViewToggle(v);
   v.querySelectorAll('[data-g]').forEach(b => b.onclick = () => {
     PREF['sel_' + group] = b.dataset.g; savePref(); render();
   });
@@ -935,6 +1013,72 @@ function pass(title, venue, code, line, note) {
   $('#done').onclick = () => { shut(); render(); };
 }
 
+/* ----------------------------------------------------------------- plans
+   Four testers asked for some version of this: see what your friends are
+   going to, invite people to an event, book plans together, share codes. One
+   said she would not use the app at all if her friends did not.
+
+   The tempting build is a friends list and "people like you also went". We are
+   not building that: this app promises counts and never names, and inferring
+   who you go out with from what you buy would break that promise quietly, in
+   the one place nobody would think to check. A plan is something you make and
+   hand out instead. You get a code, you give it to whoever you want, and the
+   only people who learn you are going are the ones you told. */
+function planSheet(refType, refId, title, back) {
+  sheet(`<div class="inscript" style="margin:4px 0 10px">${esc(title)}</div>
+    <h2 class="t-title">Going together</h2>
+    <p class="t-body" style="margin:12px 0 18px">Make a plan and you get a code. Give it to
+      whoever you want to come — they see the plan and who else is in, and nobody else does.
+      We never tell anyone where you go.</p>
+    <div id="planbody">${skeleton(2)}</div>`, '', back);
+
+  Agora.post('/api/plans', { ref_type: refType, ref_id: refId })
+    .then(r => paintPlan(r.plan, title))
+    .catch(e => { const b = $('#planbody'); if (b) b.innerHTML = emptyState('close', 'Not now', e.message); });
+}
+
+function paintPlan(plan, title) {
+  const box = $('#planbody');
+  if (!box) return;
+  box.innerHTML = `
+    <div class="pass" style="border-radius:14px">
+      <div class="code" style="font-size:34px;letter-spacing:.2em;padding:24px 18px 16px">${esc(plan.code)}</div>
+      <div class="foot" style="padding-bottom:24px"><span class="t-meta" style="color:var(--ink-04)">
+        ${plan.count} going · ${esc(plan.who.join(', '))}</span></div>
+      <div class="wm">${arcade(360, 26, 10, 0.12)}</div>
+    </div>
+    <button class="btn btn--block" id="shareplan" style="margin-top:16px">Share this code</button>
+    <p class="t-meta" style="margin:14px 0 18px">Anyone with the code can join. Everyone still
+      buys their own ticket at the student price — a plan is who is coming, not a group booking.</p>`;
+  $('#shareplan').onclick = async () => {
+    const text = `Join me: ${title} — code ${plan.code} on Ágora`;
+    try {
+      if (navigator.share) await navigator.share({ text });
+      else { await navigator.clipboard.writeText(text); toast('Copied, now paste it to them'); }
+    } catch (e) { toast('Your code is ' + plan.code); }
+  };
+}
+
+/* The other end of the same thing. */
+function joinPlanSheet() {
+  sheet(`<div class="inscript" style="margin:4px 0 10px">Someone gave you a code</div>
+    <h2 class="t-title">Join a plan</h2>
+    <p class="t-body" style="margin:12px 0 18px">Six digits from whoever invited you.</p>
+    <label class="field"><span class="lbl">Plan code</span>
+      <input class="codefield" id="pcode" inputmode="numeric" maxlength="6" placeholder="······">
+      <span class="msg" id="pcodeMsg"></span></label>`,
+    `<button class="btn btn--block" id="pjoin">Join</button>`);
+  $('#pcode').oninput = e => { e.target.value = e.target.value.replace(/\D/g, ''); fieldError('pcode', ''); };
+  $('#pjoin').onclick = async e => {
+    fieldError('pcode', '');
+    busy(e.currentTarget, true, 'Joining');
+    try {
+      const r = await Agora.post('/api/plans/join', { code: $('#pcode').value.trim() });
+      shut(); toast('You are in · ' + r.plan.who.join(', ')); render();
+    } catch (err) { busy(e.currentTarget, false); fieldError('pcode', err.message); }
+  };
+}
+
 /* Legacy event vocabulary, still written to the database alongside the
    leisure category so older rows keep reading. */
 const EV = { party: 'Party', theatre: 'Theatre', concert: 'Concert',
@@ -954,9 +1098,12 @@ function evSheet(e, back) {
       <div class="ln total"><span class="k">Student ticket</span><span class="price lg">${money(e.student_eur)}</span></div>
     </div>
     <div style="height:22px"></div>`,
-    ME ? `<button class="btn btn--block" id="buy">Buy ticket · ${money(e.student_eur)}</button>`
+    ME ? `<button class="btn btn--block" id="buy">Buy ticket · ${money(e.student_eur)}</button>
+          <button class="btn btn--quiet btn--block" id="plan" style="margin-top:8px">
+            ${ICON.spark}<span>Make a plan and invite people</span></button>`
        : `<button class="btn btn--bronze btn--block" id="join">Verify to buy · ${money(e.student_eur)}</button>`,
     back);
+  if (ME) $('#plan').onclick = () => planSheet('event', e.id, e.title_en, () => evSheet(e, back));
   if (!ME) {
     $('#join').onclick = () => { shut(); askToVerify(
       `This seat is <b>${money(e.student_eur)}</b> for a verified student, ${money(e.list_eur)} at the door.`,
@@ -1261,7 +1408,9 @@ async function card(v, turn) {
       'Your card takes one email and about twenty seconds.<br><b>It is free, and always will be.</b>');
     return;
   }
-  const [{ student }, act] = await Promise.all([Agora.get('/api/me'), Agora.get('/api/my/activity')]);
+  const [{ student }, act, pl] = await Promise.all([
+    Agora.get('/api/me'), Agora.get('/api/my/activity'),
+    Agora.get('/api/plans').catch(() => ({ plans: [] }))]);
   if (stale(turn)) return;
   ME = student; purse();
   v.innerHTML =
@@ -1279,6 +1428,20 @@ async function card(v, turn) {
     </div>
 
     ${livePasses()}
+
+    <div class="lead-in"><div class="inscript dim">PLANS</div>
+      <button class="t-meta" id="joinplan" style="text-decoration:underline;text-underline-offset:2px">
+        I have a code</button></div>
+    ${(pl.plans || []).length
+      ? `<div class="rows" style="margin:12px 0 30px">${pl.plans.map(p => `
+          <div class="row-item">
+            <span class="body"><span class="ttl" style="font-size:15px">${esc(p.what)}</span>
+              <span class="sub">${esc(p.when)}${p.venue ? ' · ' + esc(p.venue) : ''}</span>
+              <span class="sub cut">${p.count} going · ${esc(p.who.join(', '))}</span></span>
+            <span class="tail"><span class="passcode">${esc(p.code)}</span></span>
+          </div>`).join('')}</div>`
+      : `<p class="t-meta" style="margin:10px 0 30px">None yet. Open something you fancy and
+           make a plan — you get a code to pass round.</p>`}
 
     <div class="inscript dim">RECENT</div>
     ${act.transactions.length ? `<div class="rows" style="margin-top:12px">${act.transactions.map(t => `
@@ -1306,6 +1469,7 @@ async function card(v, turn) {
       ${ICON.tablet}<span>Shifts and tutoring</span></button>
     <button class="btn btn--plain btn--block" id="out" style="margin:10px 0 10px">Sign out</button>`;
   $('#top').onclick = walletSheet;
+  $('#joinplan').onclick = joinPlanSheet;
   $('#work').onclick = () => workSheet();
   $('#inv').onclick = () => inviteSheet(student);
   $('#lang').onclick = async () => {

@@ -35,6 +35,7 @@
   .mark{font-family:var(--display);font-size:16px;letter-spacing:.3em;padding-left:.3em}
   .purse{
     display:flex;align-items:center;gap:7px;padding:7px 12px 7px 10px;border-radius:999px;
+    min-height:44px;
     background:rgba(244,240,232,.09);font-size:13px;font-variant-numeric:tabular-nums;
     transition:background .16s var(--tap);
   }
@@ -56,7 +57,7 @@
   }
   .row-item .lead svg{width:21px;height:21px}
   .row-item.featured .lead{background:var(--ink-00);color:var(--bronze-hi)}
-  .cut{font-size:12px;font-weight:700;color:var(--bronze);letter-spacing:.02em}
+  .cut{font-size:12px;font-weight:700;color:var(--bronze-text);letter-spacing:.02em}
 
   /* ------------------------------------------------------------ tab bar */
   nav.tabs{
@@ -98,6 +99,9 @@
      inline SVG with no size of its own expands to fill the paragraph. */
   .vhours{margin:6px 0 0;display:flex;gap:6px;align-items:center}
   .vhours svg{width:14px;height:14px;flex:0 0 14px;opacity:.7;stroke-width:1.25}
+  /* With a back button in the corner, the first line of a sheet has to start
+     clear of it — it was running under the button and losing its first word. */
+  .sheet:has(.sheet-back) .scrollable > :first-child:not(.hero){padding-left:30px}
   .sheet-back{position:absolute;top:12px;left:16px;width:32px;height:32px;border-radius:50%;
     background:var(--stone-02);display:grid;place-items:center;color:var(--ink-03);z-index:2}
   .sheet-back svg{width:16px;height:16px;stroke-width:1.3}
@@ -294,21 +298,63 @@
   /* The map is the front door, so on this tab it is the page: full-bleed,
      fixed, with the list of what is on it scrolling underneath. */
   main.is-map{padding:0 0 112px;overflow-y:auto}
-  .mapstage{position:relative;height:clamp(300px,46vh,430px);background:var(--stone-02)}
+  /* The rail below is meant to peek — half a card above the tab bar says
+     there is more without spending a screen on saying it. What it must not do
+     is bisect a line of type: the rating was being cut 11px into its own
+     height, which does not read as a peek, it reads as a mistake. A couple of
+     vh off the map puts the cut between lines instead of through one. */
+  .mapstage{position:relative;height:clamp(292px,43vh,418px);background:var(--stone-02)}
   #map{position:absolute;inset:0}
   /* OSM's standard tiles are loud next to travertine and bronze: greens and
      motorway reds fight the palette. Pulled down and warmed, they read as a
      drawn plan of the city and let the price pins carry the colour. */
   #map .leaflet-tile-pane{filter:saturate(.34) sepia(.3) brightness(1.06) contrast(.92)}
-  #map .leaflet-control-attribution{font-size:10px;background:rgba(251,249,245,.82)}
-  #map .leaflet-bar a{color:var(--ink-01)}
+  /* Leaflet's own furniture is a different product's design language: square
+     white boxes with grey borders, sitting on travertine and bronze. Left
+     alone it reads as a map pasted into the app rather than part of it, which
+     is exactly how it looked. Same shapes as everything else here — rounded,
+     stone, a soft shadow — and the attribution kept legible but quiet. */
+  #map .leaflet-control-attribution{
+    font-size:9.5px;background:rgba(251,249,245,.7);color:var(--ink-04);
+    padding:2px 7px;border-radius:7px 0 0 0;backdrop-filter:blur(4px);
+  }
+  #map .leaflet-control-attribution a{color:var(--ink-03)}
+  #map .leaflet-bar{border:0;box-shadow:none;background:none}
+  #map .leaflet-bar a{
+    color:var(--ink-01);background:rgba(251,249,245,.94);border:0;
+    box-shadow:0 2px 10px rgba(21,24,28,.16);
+    backdrop-filter:saturate(160%) blur(8px);
+  }
+  /* Leaflet ships 30px controls; 44 is the size a thumb needs. */
+  #map .leaflet-touch .leaflet-bar a,#map .leaflet-bar a{
+    width:42px;height:42px;line-height:42px;font-size:20px;font-weight:400}
+  #map .leaflet-bar a:first-child{border-radius:12px 12px 4px 4px}
+  #map .leaflet-bar a:last-child{border-radius:4px 4px 12px 12px;margin-top:3px}
+  #map .leaflet-bar a:hover{background:var(--stone-00)}
+  #map .leaflet-bar a.leaflet-disabled{opacity:.42}
 
-  .mapchips{
+  /* The stage used to stop dead against the list below it, a hard horizontal
+     edge across the screen. A short fade to the page colour lets the city run
+     out into the list instead of being cut off. */
+  .mapstage::after{
+    content:'';position:absolute;left:0;right:0;bottom:0;height:34px;z-index:410;
+    pointer-events:none;
+    background:linear-gradient(180deg,rgba(247,244,237,0),var(--stone-01));
+  }
+
+  .mapchips{padding-top:5px;padding-bottom:5px;
     position:absolute;left:0;right:0;top:0;z-index:420;padding:11px 14px 16px;
     background:linear-gradient(180deg,rgba(247,244,237,.96) 4%,rgba(247,244,237,0));
     pointer-events:none;
   }
   .mapchips .chiprow{pointer-events:auto;padding-left:0}
+  /* The row of categories runs off the right edge mid-word, so it looks like a
+     clipped layout rather than a list that keeps going. A fade says "scroll". */
+  .mapchips::after{
+    content:'';position:absolute;right:0;top:0;width:34px;height:52px;z-index:1;
+    pointer-events:none;
+    background:linear-gradient(90deg,rgba(247,244,237,0),rgba(247,244,237,.92));
+  }
   /* Leaflet's own panes sit at z-index 400–700; the chips must clear them. */
   #map .leaflet-bottom.leaflet-right{margin:0 2px 20px 0}
   .mapchips .chiprow::-webkit-scrollbar{display:none}
@@ -329,7 +375,11 @@
   /* When a label has been moved, the place it belongs to is marked at its real
      position. Without this the price floats and means nothing. */
   .pin.moved::before{
-    content:'';position:absolute;left:-3px;top:-3px;width:6px;height:6px;z-index:3;
+    /* Below the badges, not above them. At z-index 3 this marker drew on top
+       of a neighbour's price whenever a venue's true position happened to sit
+       under another pin's label — which on a dense old town is often. A price
+       you cannot read beats a position marker you can, every time. */
+    content:'';position:absolute;left:-3px;top:-3px;width:6px;height:6px;z-index:1;
     border-radius:50%;background:var(--stone-00);border:1.5px solid var(--bronze-lo);
     box-shadow:0 1px 3px rgba(21,24,28,.3);
   }
@@ -345,6 +395,12 @@
     background:var(--stone-00);border-right:1px solid rgba(21,24,28,.14);
     border-bottom:1px solid rgba(21,24,28,.14);transform:translateX(-50%) rotate(45deg);
   }
+  /* The badge is 28px tall and it is the main thing you touch on the map.
+     Same treatment as a chip: the drawing stays, a transparent band gives the
+     thumb its 44. It sits behind the badge so it never covers a neighbour's
+     price. */
+  .pin .b::before{content:'';position:absolute;left:-6px;right:-6px;top:50%;
+    height:44px;transform:translateY(-50%);z-index:-1}
   .pin .d{flex:0 0 auto;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;color:#fff}
   .pin .d svg{width:11px;height:11px;stroke-width:1.6}
   .pin.sel .b{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
@@ -374,6 +430,12 @@
   .seek-x{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background:var(--stone-02);
     display:grid;place-items:center;color:var(--ink-03)}
   .seek-x svg{width:11px;height:11px}
+
+  /* ------------------------------------------------------------ calendar */
+  .calday{margin:0 0 22px}
+  .calday-h{display:flex;align-items:baseline;justify-content:space-between;
+    padding:0 0 8px;border-bottom:1px solid var(--line);margin:0 0 6px}
+  .calday-h .dayname{font-family:var(--display);font-size:17px;letter-spacing:.01em}
 
   .maplist{padding:18px 20px 0}
   .maplist .lead-in{display:flex;align-items:baseline;justify-content:space-between;margin:0 0 12px}
@@ -417,7 +479,7 @@
   <main id="view"></main>
   <nav class="tabs" id="tabs" role="tablist"></nav>
 
-  <section id="gate" class="hide">
+  <section id="gate" class="hide on-ink">
     <div class="top">
       <div class="arc" id="gateArc"></div>
       <div class="wm">ÁGORA</div>
