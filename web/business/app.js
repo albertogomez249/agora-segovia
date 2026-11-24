@@ -23,7 +23,7 @@ $('#send').onclick = async e => {
     $('#g1').classList.add('hide'); $('#g2').classList.remove('hide');
     $('#sent').innerHTML = 'Six digits on their way to <b>' + esc(email) + '</b>' +
       '<span class="big">' + r.dev_code + '</span>' +
-      '<span style="font-size:12.5px;opacity:.85">Shown here because this is a demo.</span>';
+      '<span style="font-size:12px;opacity:.85">Shown here because this is a demo.</span>';
     $('#code').value = r.dev_code;
     $('#nameWrap').classList.toggle('hide', !!r.existing);
     setTimeout(() => (r.existing ? $('#verify') : $('#name')).focus(), 120);

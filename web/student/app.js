@@ -293,7 +293,7 @@ function drawMap(pins, centre) {
     host.innerHTML = `
       <div class="nomap">
         <div class="ic">${ICON.pin}</div>
-        <div class="t-title" style="font-size:17px">The map needs a connection</div>
+        <div class="t-title" style="font-size:16px">The map needs a connection</div>
         <p class="t-meta" style="margin:8px auto 0;max-width:30ch">
           Everything below still works, sorted by part of the city.</p>
       </div>`;
@@ -346,7 +346,7 @@ function drawMap(pins, centre) {
     // Asymmetric on purpose: the chips float over the top of the stage and a
     // pin tucked under them is a price nobody can read.
     MAP.fitBounds(L.latLngBounds(spread), {
-      paddingTopLeft: [40, 80], paddingBottomRight: [40, 44], maxZoom: 16,
+      paddingTopLeft: [58, 80], paddingBottomRight: [58, 44], maxZoom: 16,
     });
   };
   setTimeout(fit, 60);
@@ -411,7 +411,9 @@ function declutter() {
     // Candidates in order of how well the label still reads as belonging to
     // its point: straight up, straight down, then out to the sides.
     const step = h + 4;
-    const cand = [[0, 0]];
+    // Sideways before far-vertical: a label beside its pin still reads as
+    // belonging to it, a label four rows above it does not.
+    const cand = [[0, 0], [w * 0.62, 0], [-w * 0.62, 0]];
     for (let k = 1; k <= 4; k++) {
       cand.push([0, -k * step], [0, k * step],
                 [w * 0.56, -k * step], [-w * 0.56, -k * step],
@@ -425,11 +427,29 @@ function declutter() {
     // Nowhere clean to put it: leave it on its point rather than fling it
     // across the map. Overlapping honestly beats pointing at the wrong place.
     if (!placed) { dx = 0; dy = 0; }
+    // Whatever happened above, a price that runs off the edge of the stage is
+    // not a price. Overlapping a neighbour is recoverable; being cut in half
+    // by the bezel is not, so the clamp wins over the collision test.
+    const c0 = boxAt(dx, dy);
+    if (c0.l < LIMIT.left)  dx += LIMIT.left - c0.l;
+    if (c0.r > LIMIT.right) dx -= c0.r - LIMIT.right;
+    const c1 = boxAt(dx, dy);
+    if (c1.t < LIMIT.top)      dy += LIMIT.top - c1.t;
+    if (c1.b > LIMIT.bottom)   dy -= c1.b - LIMIT.bottom;
     const box = () => boxAt(dx, dy);
 
     boxes.push(box());
     el.style.setProperty('--dx', Math.round(dx) + 'px');
     el.style.setProperty('--dy', Math.round(dy) + 'px');
+    // A label that has stepped aside is joined to its point by a hairline, the
+    // way an engraver leads a caption to the thing it names. A loose dot and a
+    // floating price are two marks the reader has to pair up themselves; a
+    // leader does the pairing for them, and it reads as drawn rather than as
+    // dirt on the map. The line runs to the centre of the badge, which is
+    // opaque, so only the part outside the badge is ever seen.
+    const lx = dx, ly = dy - h / 2;
+    el.style.setProperty('--lead-len', Math.round(Math.hypot(lx, ly)) + 'px');
+    el.style.setProperty('--lead-ang', Math.atan2(ly, lx).toFixed(3) + 'rad');
     el.classList.toggle('moved', dx !== 0 || dy !== 0);
   }
 }
@@ -604,7 +624,7 @@ async function paintReviews(p) {
           </div>`).join('')}</div>`
       : `<p class="t-meta" style="margin:10px 0 0">No published review yet.</p>`) +
     (d.mine
-      ? `<div class="guest" style="margin:16px 0 0;background:var(--stone-02);color:var(--ink-02)">
+      ? `<div class="guest" style="margin:16px 0 0">
            <div class="t">Your review is <b style="color:var(--oxblood)">${esc(d.mine.status)}</b>.
              ${d.mine.status === 'pending' ? 'A moderator reads it before it appears.' : ''}</div></div>`
       : d.can_review
@@ -874,7 +894,7 @@ async function jobs(v) {
               <span class="sub">${esc(j.poster)}${j.schedule ? ' · ' + esc(j.schedule) : ''}</span>
               ${j.hours_per_week ? `<span class="sub cut">${j.hours_per_week}h a week</span>` : ''}
             </span>
-            <span class="tail"><span class="price" style="font-size:19px">${money(j.pay_eur)}</span>
+            <span class="tail"><span class="price" style="font-size:18px">${money(j.pay_eur)}</span>
               <span class="t-meta">/hour</span></span>
           </button>`).join('')}</div>`
       : emptyState('tablet', 'Nothing open', 'No shifts posted right now.')) +
@@ -895,7 +915,7 @@ function jobSheet(j) {
     <p class="t-meta">${esc(j.poster)}${j.schedule ? ' · ' + esc(j.schedule) : ''}</p>
     <p class="t-body" style="margin:14px 0 0">${esc(j.detail_en)}</p>
     <div class="ledger">
-      <div class="ln"><span class="k">Pay</span><span class="price" style="font-size:20px">${money(j.pay_eur)}/h</span></div>
+      <div class="ln"><span class="k">Pay</span><span class="price" style="font-size:21px">${money(j.pay_eur)}/h</span></div>
       ${j.hours_per_week ? `<div class="ln"><span class="k">Hours</span><span>${j.hours_per_week} a week</span></div>` : ''}
     </div>
     ${ME ? `<label class="field" style="margin-top:22px"><span class="lbl">A line about you</span>
@@ -1051,8 +1071,8 @@ function walletSheet() {
       <div class="ln total"><span class="k">If you never turn up</span><span>Released back to you</span></div>
     </div>
 
-    <div class="guest" style="margin:20px 0 0;background:var(--stone-02);color:var(--ink-02)">
-      <div class="t" style="font-size:12.5px;line-height:1.45">
+    <div class="guest" style="margin:20px 0 0">
+      <div class="t" style="font-size:12px;line-height:1.45">
         <b style="color:var(--oxblood)">Demonstration.</b> The buttons below add pretend credit so
         you can try a reservation. No card is asked for because no money moves — a real version
         takes you to your bank.
@@ -1174,7 +1194,7 @@ function inviteSheet(s) {
     <p class="t-body" style="margin:14px 0 20px">Give a classmate your code. When they verify with
       their university email, the credit lands in both wallets.</p>
     <div class="pass" style="border-radius:14px">
-      <div class="code" style="font-size:34px;letter-spacing:.2em;padding:24px 18px 20px">${esc(s.invite_code || '—')}</div>
+      <div class="code" style="font-size:36px;letter-spacing:.2em;padding:24px 18px 20px">${esc(s.invite_code || '—')}</div>
       <div class="foot" style="padding-bottom:26px"><span class="t-meta" style="color:var(--ink-04)">
         ${s.invited_count} already joined through you</span></div>
       <div class="wm">${arcade(360, 26, 10, 0.12)}</div>

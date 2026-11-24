@@ -32,19 +32,19 @@
   }
   .brandbar::after{content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
     background:linear-gradient(90deg,var(--bronze) 0%,rgba(156,114,70,0) 72%)}
-  .mark{font-family:var(--display);font-size:17px;letter-spacing:.3em;padding-left:.3em}
+  .mark{font-family:var(--display);font-size:16px;letter-spacing:.3em;padding-left:.3em}
   .purse{
     display:flex;align-items:center;gap:7px;padding:7px 12px 7px 10px;border-radius:999px;
-    background:rgba(244,240,232,.09);font-size:13.5px;font-variant-numeric:tabular-nums;
+    background:rgba(244,240,232,.09);font-size:13px;font-variant-numeric:tabular-nums;
     transition:background .16s var(--tap);
   }
-  .purse:active{background:rgba(244,240,232,.18)}
+  .purse:active{background:rgba(244,240,232,.18);transform:var(--press-ctl)}
   .purse svg{width:16px;height:16px;opacity:.72;stroke-width:1.3}
 
   /* -------------------------------------------------------------- scroll */
   main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 20px 112px}
   .screen-head{padding:26px 0 18px}
-  .screen-head h1{font-family:var(--display);font-size:34px;line-height:1.05;margin:9px 0 0}
+  .screen-head h1{font-family:var(--display);font-size:36px;line-height:1.05;margin:9px 0 0}
   .screen-head p{font-size:14px;color:var(--ink-04);margin:8px 0 0;max-width:32ch;line-height:1.45}
   .filters{margin:0 -20px 4px;padding:0 20px 16px}
   .filters + .filters{padding-top:0}
@@ -70,10 +70,10 @@
     color:var(--ink-04);transition:color .18s var(--tap);
   }
   nav.tabs button svg{width:23px;height:23px;transition:transform .22s var(--ease)}
-  nav.tabs button .lb{font-size:9.5px;letter-spacing:.06em;font-weight:600}
+  nav.tabs button .lb{font-size:10px;letter-spacing:.06em;font-weight:600}
   nav.tabs button[aria-selected="true"]{color:var(--ink-00)}
   nav.tabs button[aria-selected="true"] svg{transform:translateY(-1px)}
-  nav.tabs button:active svg{transform:scale(.88)}
+  nav.tabs button:active svg{transform:scale(.9)}
 
   /* -------------------------------------------------------------- sheet */
   .scrim{position:absolute;inset:0;background:rgba(21,24,28,.42);opacity:0;pointer-events:none;
@@ -105,7 +105,7 @@
   /* --------------------------------------------------------- price block */
   .ledger{border-top:1px solid var(--line);margin:22px 0 0}
   .ledger .ln{display:flex;justify-content:space-between;align-items:baseline;
-    padding:12px 0;border-bottom:1px solid var(--line-soft);font-size:14.5px}
+    padding:12px 0;border-bottom:1px solid var(--line-soft);font-size:14px}
   .ledger .ln .k{color:var(--ink-04)}
   .ledger .ln.total{border-bottom:0;padding-bottom:4px}
 
@@ -118,7 +118,7 @@
     border-radius:50%;background:var(--stone-01)}
   .pass .perf::before{left:-9px}.pass .perf::after{right:-9px}
   .pass .code{padding:26px 22px 10px;text-align:center;font-family:var(--display);
-    font-size:42px;letter-spacing:.24em;text-indent:.24em;color:var(--stone-00)}
+    font-size:44px;letter-spacing:.24em;text-indent:.24em;color:var(--stone-00)}
   .pass .foot{padding:0 22px 30px;text-align:center;position:relative;z-index:1}
   .pass .wm{position:absolute;left:0;right:0;bottom:-1px;color:var(--bronze-hi);
     pointer-events:none;z-index:0}
@@ -134,7 +134,7 @@
   .rail::-webkit-scrollbar{display:none}
   .railcard{flex:0 0 214px;border-radius:14px;overflow:hidden;position:relative;
     background:var(--ink-00);text-align:left;transition:transform .18s var(--tap)}
-  .railcard:active{transform:scale(.975)}
+  .railcard:active{transform:var(--press-card)}
   .railcard .art{display:block;height:112px;position:relative;overflow:hidden}
   /* The scrim is not decoration: the plate underneath is a generated pattern
      of unknown value, and a photograph could be anything at all. White type
@@ -143,35 +143,35 @@
     background:linear-gradient(180deg,rgba(21,24,28,0) 24%,rgba(21,24,28,.5) 58%,
       rgba(21,24,28,.88) 100%)}
   .railcard .over{display:block;position:absolute;left:0;right:0;bottom:0;padding:11px 13px;color:#fff;z-index:1}
-  .railcard .over .n{display:block;font-family:var(--display);font-size:16.5px;line-height:1.15;
+  .railcard .over .n{display:block;font-family:var(--display);font-size:16px;line-height:1.15;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .railcard .over .m{display:block;font-size:11.5px;opacity:.88;margin:3px 0 0;
+  .railcard .over .m{display:block;font-size:11px;opacity:.88;margin:3px 0 0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .railcard .bar{display:flex;align-items:center;justify-content:space-between;
     padding:10px 13px;background:var(--stone-00)}
-  .railcard .bar .p{font-family:var(--display);font-size:19px;color:var(--oxblood)}
-  .railcard .bar .w{font-size:11.5px;color:var(--ink-04);text-decoration:line-through}
+  .railcard .bar .p{font-family:var(--display);font-size:18px;color:var(--oxblood)}
+  .railcard .bar .w{font-size:11px;color:var(--ink-04);text-decoration:line-through}
 
   /* big event plate */
   .evcard{display:block;width:100%;text-align:left;border-radius:14px;overflow:hidden;
     background:var(--stone-00);border:1px solid var(--line);margin:0 0 13px;
     transition:transform .18s var(--tap)}
-  .evcard:active{transform:scale(.99)}
+  .evcard:active{transform:var(--press-card)}
   .evcard .art{display:block;height:124px;position:relative;overflow:hidden}
   .evcard .art::after{content:'';position:absolute;inset:0;
     background:linear-gradient(180deg,rgba(21,24,28,.14) 32%,rgba(21,24,28,.46) 62%,
       rgba(21,24,28,.84) 100%)}
   .evcard .art .tagline,.evcard .art .when{z-index:1}
   .evcard .art .tagline{display:block;position:absolute;left:12px;top:11px;background:rgba(21,24,28,.6);
-    color:#fff;border-radius:6px;padding:4px 9px;font-size:10.5px;font-weight:700;
+    color:#fff;border-radius:6px;padding:4px 9px;font-size:10px;font-weight:700;
     letter-spacing:.1em;text-transform:uppercase;backdrop-filter:blur(6px)}
   .evcard .art .when{display:block;position:absolute;left:13px;bottom:11px;right:13px;color:#fff;
     font-family:var(--display);font-size:15px;text-shadow:0 1px 8px rgba(0,0,0,.5);
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .evcard .meat{display:block;padding:13px 15px 15px}
-  .evcard .meat .n{display:block;font-size:16.5px;font-weight:600;line-height:1.25;
+  .evcard .meat .n{display:block;font-size:16px;font-weight:600;line-height:1.25;
     letter-spacing:-.015em}
-  .evcard .meat .m{display:block;font-size:12.5px;color:var(--ink-04);margin:4px 0 0;
+  .evcard .meat .m{display:block;font-size:12px;color:var(--ink-04);margin:4px 0 0;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .evcard .meat .row2{display:flex;align-items:baseline;justify-content:space-between;margin:11px 0 0}
 
@@ -180,7 +180,7 @@
   .hero::after{content:'';position:absolute;inset:0;
     background:linear-gradient(180deg,rgba(21,24,28,.05) 32%,rgba(21,24,28,.78) 100%)}
   .hero .cap{position:absolute;left:24px;bottom:14px;right:24px;color:#fff;z-index:1}
-  .hero .cap .k{font-family:var(--display);font-size:10.5px;letter-spacing:.3em;
+  .hero .cap .k{font-family:var(--display);font-size:10px;letter-spacing:.3em;
     text-transform:uppercase;opacity:.86}
   .hero .cap .n{font-family:var(--display);font-size:25px;line-height:1.1;margin:7px 0 0;
     text-shadow:0 2px 14px rgba(0,0,0,.45)}
@@ -195,30 +195,37 @@
   .mcard .inner{position:absolute;inset:0;padding:18px 20px;display:flex;flex-direction:column}
   .mcard .top{display:flex;align-items:flex-start;justify-content:space-between}
   .mcard .wm{font-family:var(--display);font-size:16px;letter-spacing:.3em}
-  .mcard .seal{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;
+  .mcard .seal{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:700;
     letter-spacing:.11em;text-transform:uppercase;color:#0F1216;background:var(--bronze-hi);
     border-radius:5px;padding:4px 8px}
   .mcard .seal svg{width:11px;height:11px;stroke-width:1.7}
   .mcard .nm{font-family:var(--display);font-size:25px;line-height:1.1;margin:auto 0 0}
-  .mcard .uni{font-size:11.5px;color:#A9B3BE;margin:5px 0 0}
+  .mcard .uni{font-size:11px;color:#A9B3BE;margin:5px 0 0}
   .mcard .bot{display:flex;align-items:flex-end;justify-content:space-between;margin:13px 0 0}
   .mcard .no{font-size:13px;letter-spacing:.17em;color:#C7CFD8;font-variant-numeric:tabular-nums}
-  .mcard .since{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:#79838E;
+  .mcard .since{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:#79838E;
     text-align:right;line-height:1.5}
 
   /* ------------------------------------------------------------ stat band */
   .band{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--line);
     border:1px solid var(--line);border-radius:13px;overflow:hidden;margin:18px 0 0}
   .band .c{background:var(--stone-00);padding:14px 12px;text-align:center}
-  .band .c .v{font-family:var(--display);font-size:23px;line-height:1}
+  .band .c .v{font-family:var(--display);font-size:25px;line-height:1}
   .band .c .v.coin{color:var(--oxblood)}
-  .band .c .k{font-size:10.5px;color:var(--ink-04);margin:6px 0 0;letter-spacing:.03em}
+  .band .c .k{font-size:10px;color:var(--ink-04);margin:6px 0 0;letter-spacing:.03em}
 
   /* ---------------------------------------------------------- guest strip */
-  .guest{display:flex;align-items:center;gap:11px;background:var(--ink-00);color:var(--stone-01);
-    border-radius:13px;padding:13px 15px;margin:0 0 18px}
-  .guest .t{flex:1;font-size:13.5px;line-height:1.45}
-  .guest .t b{color:var(--bronze-hi);font-weight:600}
+  /* This was a black slab, and on a page whose whole premise is hairlines
+     instead of boxes it was the loudest thing on the screen — a nag shouting
+     over the offers it is meant to introduce. It is now the same idiom as the
+     demonstration notice: ruled top and bottom, sitting on the travertine. The
+     action keeps its bronze fill, because a prompt you cannot find is not a
+     quieter prompt, it is a broken one. */
+  .guest{display:flex;align-items:center;gap:14px;background:none;color:var(--ink-02);
+    border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    border-radius:0;padding:12px 0;margin:0 0 18px}
+  .guest .t{flex:1;font-size:13px;line-height:1.45;color:var(--ink-03)}
+  .guest .t b{color:var(--bronze-lo);font-weight:600}
 
   /* The demonstration notice. It must be impossible to miss and cheap to
      scroll past: a rule above it, the word in oxblood, one line of text. A
@@ -230,7 +237,7 @@
   .demo-line b{color:var(--oxblood);font-weight:700;letter-spacing:.02em}
 
   /* ----------------------------------------------------------- proof chips */
-  .proof{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ink-04)}
+  .proof{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-04)}
   .proof.hot{color:var(--oxblood);font-weight:600}
   .proof svg{width:12px;height:12px;stroke-width:1.2}
 
@@ -239,7 +246,7 @@
     display:flex;flex-direction:column;padding:0 28px calc(30px + env(safe-area-inset-bottom));
     overflow-y:auto}
   #gate .top{flex:1;display:flex;flex-direction:column;justify-content:center;padding:54px 0 26px}
-  #gate .wm{font-family:var(--display);font-size:clamp(44px,13vw,58px);letter-spacing:.17em;
+  #gate .wm{font-family:var(--display);font-size:clamp(44px,13vw,52px);letter-spacing:.17em;
     padding-left:.17em;line-height:1}
   #gate .tag{color:var(--ink-04);font-size:15px;line-height:1.55;margin:18px 0 0;max-width:27ch}
   #gate .tag b{color:var(--stone-02);font-weight:500}
@@ -248,13 +255,13 @@
   #gate .inp::placeholder{color:#5D6670}
   #gate .lbl{color:var(--ink-04)}
   #gate .codefield{background:rgba(244,240,232,.06);border-color:rgba(244,240,232,.14);color:var(--stone-00)}
-  #gate .note{font-size:12.5px;color:var(--ink-04);line-height:1.6;margin:16px 0 0}
+  #gate .note{font-size:12px;color:var(--ink-04);line-height:1.6;margin:16px 0 0}
   #gate .note b{color:var(--bronze-hi);font-weight:600}
   #gate .arc{color:var(--bronze);margin:0 0 6px}
   .sent{border:1px solid rgba(244,240,232,.14);border-radius:12px;padding:14px 16px;margin:0 0 20px;
-    font-size:13.5px;color:var(--ink-04);line-height:1.55;background:rgba(244,240,232,.04)}
+    font-size:13px;color:var(--ink-04);line-height:1.55;background:rgba(244,240,232,.04)}
   .sent b{color:var(--stone-01);font-weight:500}
-  .sent .big{font-family:var(--display);font-size:22px;letter-spacing:.22em;color:var(--bronze-hi);
+  .sent .big{font-family:var(--display);font-size:21px;letter-spacing:.22em;color:var(--bronze-hi);
     display:block;margin:7px 0 0}
 
   /* ----------------------------------------------------------------- map */
@@ -267,7 +274,7 @@
      motorway reds fight the palette. Pulled down and warmed, they read as a
      drawn plan of the city and let the price pins carry the colour. */
   #map .leaflet-tile-pane{filter:saturate(.34) sepia(.3) brightness(1.06) contrast(.92)}
-  #map .leaflet-control-attribution{font-size:9px;background:rgba(251,249,245,.82)}
+  #map .leaflet-control-attribution{font-size:10px;background:rgba(251,249,245,.82)}
   #map .leaflet-bar a{color:var(--ink-01)}
 
   .mapchips{
@@ -286,18 +293,25 @@
     display:flex;align-items:center;gap:5px;padding:4px 9px 4px 6px;border-radius:999px;
     background:var(--stone-00);border:1px solid rgba(21,24,28,.14);
     box-shadow:0 3px 10px rgba(21,24,28,.22);white-space:nowrap;
-    font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-00);
+    font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-00);
     /* --dx/--dy come from declutter(): the point stays where it is and only
        the label steps aside. Pixel values, so nothing lands on a half pixel. */
     transform:translate(calc(-50% + var(--dx,0px)), calc(-100% + var(--dy,0px)));
     transition:transform .22s var(--ease);
+    position:relative;z-index:2;
   }
   /* When a label has been moved, the place it belongs to is marked at its real
      position. Without this the price floats and means nothing. */
   .pin.moved::before{
-    content:'';position:absolute;left:-3.5px;top:-3.5px;width:7px;height:7px;
-    border-radius:50%;background:var(--stone-00);border:2px solid var(--ink-00);
-    box-shadow:0 1px 4px rgba(21,24,28,.35);
+    content:'';position:absolute;left:-3px;top:-3px;width:6px;height:6px;z-index:3;
+    border-radius:50%;background:var(--stone-00);border:1.5px solid var(--bronze-lo);
+    box-shadow:0 1px 3px rgba(21,24,28,.3);
+  }
+  /* The leader: point to label, one hairline, drawn under the badge. */
+  .pin.moved::after{
+    content:'';position:absolute;left:0;top:0;z-index:1;
+    width:var(--lead-len,0px);height:1px;background:var(--bronze-lo);opacity:.6;
+    transform-origin:0 50%;transform:rotate(var(--lead-ang,0rad));
   }
   .pin.moved .b::after{opacity:0}
   .pin .b::after{
@@ -332,15 +346,15 @@
     border:1px solid var(--line);border-radius:13px;padding:15px 17px;margin:0 0 18px;
     background:var(--stone-00);
   }
-  .cohort .n{font-family:var(--display);font-size:27px;line-height:1}
-  .cohort .k{font-size:12.5px;color:var(--ink-04);margin:6px 0 0;line-height:1.5}
+  .cohort .n{font-family:var(--display);font-size:30px;line-height:1}
+  .cohort .k{font-size:12px;color:var(--ink-04);margin:6px 0 0;line-height:1.5}
   .chip[aria-disabled="true"]{opacity:.42}
   .revcard{border-top:1px solid var(--line-soft);padding:14px 0}
   .revcard .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
   .revcard .who{font-size:12px;color:var(--ink-04)}
-  .revcard .stars{color:var(--bronze);font-size:12.5px;letter-spacing:.12em;flex:0 0 auto}
+  .revcard .stars{color:var(--bronze);font-size:12px;letter-spacing:.12em;flex:0 0 auto}
   .revcard .bd{font-size:14px;line-height:1.55;margin:7px 0 0;color:var(--ink-02)}
-  .revcard .vn{font-size:13.5px;font-weight:600}
+  .revcard .vn{font-size:13px;font-weight:600}
 
   /* --------------------------------------------------------------- toast */
   #toast{position:absolute;left:50%;bottom:98px;transform:translate(-50%,14px);z-index:70;
