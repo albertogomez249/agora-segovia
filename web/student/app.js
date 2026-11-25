@@ -152,6 +152,18 @@ const emptyState = (icon, t, d) =>
 const proof = (o) => {
   const bits = [];
   if (o.uses > 0) bits.push(`<span class="proof">${ICON.bust}${o.uses} student${o.uses === 1 ? '' : 's'}</span>`);
+  // Someone is going. Not who — the count never drops below five and carries
+  // no name, no degree and no year, because at four people a count is a short
+  // list of who was out on Thursday. The window is stated rather than implied:
+  // "lately" could mean anything and this number is only worth showing if it
+  // can be taken literally.
+  if (o.plans > 0) {
+    // Short here, exact in the sheet. A chip is read at a glance beside
+    // "6 students" — which is the past — so "5 planning" lands as "people are
+    // going", and the sheet underneath says the window outright rather than
+    // cramming "in the last three weeks" into a row that already wraps.
+    bits.push(`<span class="proof">${ICON.spark}${o.plans} planning</span>`);
+  }
   if (o.fresh) bits.push(`<span class="proof">${ICON.check}checked this week</span>`);
   if (o.left != null && o.left <= 5) bits.push(`<span class="proof hot">only ${o.left} left</span>`);
   return bits.length ? `<span class="sub" style="display:flex;gap:11px;margin-top:5px">${bits.join('')}</span>` : '';
@@ -931,7 +943,7 @@ async function listScreen(v, group, turn) {
             <span class="when">${esc(e.when)}</span></span>
           <span class="meat">
             <span class="n">${esc(e.title_en)}</span>
-            <span class="m">${esc(e.venue || e.business_name)}${e.uses ? ' · ' + e.uses + ' going' : ''}</span>
+            <span class="m">${esc(e.venue || e.business_name)}${e.uses ? ' · ' + e.uses + ' going' : ''}${e.plans ? ' · ' + e.plans + ' have a plan' : ''}</span>
             <span class="row2">
               <span class="proof ${e.left <= 8 ? 'hot' : ''}">${e.left} of ${e.capacity} left</span>
               <span><span class="price" style="font-size:21px">${money(e.student_eur)}</span>
@@ -978,6 +990,7 @@ function offer(o, back) {
     <div style="display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 0">
       ${o.window_label ? `<span class="badge badge--bronze">${esc(o.window_label)}</span>` : ''}
       ${o.uses ? `<span class="badge">${o.uses} students used this</span>` : ''}
+      ${o.plans ? `<span class="badge badge--bronze">${o.plans} made a plan here in three weeks</span>` : ''}
       ${o.fresh ? `<span class="badge badge--live">${ICON.check} checked this week</span>` : ''}
     </div>
     <div class="ledger">
@@ -1132,6 +1145,7 @@ function evSheet(e, back) {
     <p class="t-meta">${esc(e.when)} · ${esc(e.venue || e.business_name)}</p>
     <p class="t-body" style="margin:14px 0 0">${esc(e.detail_en)}</p>
     ${e.uses ? `<div class="badge" style="margin:14px 0 0">${e.uses} students going</div>` : ''}
+    ${e.plans ? `<div class="badge badge--bronze" style="margin:14px 0 0">${e.plans} have a plan for this</div>` : ''}
     <div class="ledger">
       <div class="ln"><span class="k">At the door</span><span class="was" style="font-size:15px">${money(e.list_eur)}</span></div>
       <div class="ln"><span class="k">Seats left</span><span>${e.left}</span></div>

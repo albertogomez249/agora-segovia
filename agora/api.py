@@ -74,8 +74,51 @@ def _uses(ref_type, ref_id):
     return n if n >= MIN_COHORT else 0
 
 
+PLAN_WINDOW_DAYS = 21
+
+
+def _plans(ref_type, ref_id):
+    """How many students have a plan for this. A count, never a name.
+
+    The launch plan wanted a public board of plans with spaces going spare, so
+    that an app with nobody in it does not look like an app with nobody in it.
+    That was turned down, and rightly: a board is students announcing where
+    they will be to people they did not choose. But the problem it was solving
+    is real — a newcomer on the first day of Orientation sees no sign that
+    anyone else is inside — and this is the part of the answer that fits
+    within the promise. Five people are a crowd; four are a short list of who
+    was out on Thursday.
+
+    So the same floor as _uses() and MIN_COHORT, enforced here rather than on
+    a screen, because a screen can forget and a query layer cannot. Nothing
+    about who: not a name, not a degree, not a count small enough to guess
+    from.
+
+    An event has a date, so its count is genuinely about what is coming. An
+    offer has none — a plan on an offer is just "we are going to use this" —
+    so there the window is the last three weeks and the wording on screen says
+    so. Calling that "upcoming" would be a small lie, and the whole point of
+    this number is that it can be trusted.
+    """
+    if ref_type == "event":
+        e = db.q("SELECT starts_at FROM events WHERE id=?", (ref_id,), one=True)
+        if not e or e["starts_at"] <= db.now():
+            return 0
+        row = db.q("SELECT COUNT(DISTINCT pm.student_id) n FROM plans p "
+                   "JOIN plan_members pm ON pm.plan_id=p.id "
+                   "WHERE p.ref_type='event' AND p.ref_id=?", (ref_id,), one=True)
+    else:
+        row = db.q("SELECT COUNT(DISTINCT pm.student_id) n FROM plans p "
+                   "JOIN plan_members pm ON pm.plan_id=p.id "
+                   "WHERE p.ref_type='offer' AND p.ref_id=? AND p.created_at >= ?",
+                   (ref_id, db.now() - PLAN_WINDOW_DAYS * 86400), one=True)
+    n = row["n"] if row else 0
+    return n if n >= MIN_COHORT else 0
+
+
 def decorate_offer(o):
     o["uses"] = _uses("offer", o["id"])
+    o["plans"] = _plans("offer", o["id"])
     o["fresh_days"] = int((db.now() - o["created_at"]) / 86400)
     o["fresh"] = o["fresh_days"] <= FRESH_DAYS
     o["list_eur"] = money(o["list_cents"])
@@ -96,6 +139,7 @@ def decorate_offer(o):
 
 def decorate_event(e):
     e["uses"] = _uses("event", e["id"])
+    e["plans"] = _plans("event", e["id"])
     e["list_eur"] = money(e["list_cents"])
     e["student_eur"] = money(e["student_cents"])
     e["saved_eur"] = money(e["list_cents"] - e["student_cents"])

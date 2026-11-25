@@ -387,21 +387,32 @@ def run():
     repeats = {s: (3 if i % 4 == 0 else 2) for i, s in enumerate(back)}
     circle = {s: rnd.sample([x for x in sids if x != s], k=rnd.choice([2, 3, 3, 4]))
               for s in makers}
+    popular = rnd.sample(offer_ids, k=min(3, len(offer_ids))) if offer_ids else []
     for s_id in makers:
         # A second plan is the exception, not the rule: that is what makes it
         # worth measuring. Roughly a third come back, a few go on from there.
         n = repeats.get(s_id, 1)
-        first_at = now - rnd.randrange(9 * 86400, 46 * 86400)
+        first_at = now - rnd.randrange(2 * 86400, 34 * 86400)
         at = first_at
         for k in range(n):
             if k:
                 at += rnd.randrange(2 * 86400, 17 * 86400)
                 if at > now:
                     break
-            if event_ids and rnd.random() < 0.55:
+            # Plans are not spread evenly over the catalogue, and seeding them
+            # that way hid the feature: with sixteen plans scattered across
+            # twelve offers, no single one reached the five-person floor and
+            # the count never appeared. In a real city a few things carry the
+            # week — the cheap set lunch, the Thursday at the cinema — and
+            # everything else gets the occasional plan. So most draws land on
+            # a small popular set and the rest go anywhere, which is what
+            # makes the threshold legible: some venues show a count, most do
+            # not, and that difference is the information.
+            if event_ids and rnd.random() < 0.5:
                 ref_type, ref_id = "event", rnd.choice(event_ids)
             elif offer_ids:
-                ref_type, ref_id = "offer", rnd.choice(offer_ids)
+                pool = popular if rnd.random() < 0.72 else offer_ids
+                ref_type, ref_id = "offer", rnd.choice(pool)
             else:
                 break
             code = "P" + "".join(rnd.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")

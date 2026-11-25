@@ -267,7 +267,12 @@
   .demo-line b{color:var(--oxblood);font-weight:700;letter-spacing:.02em}
 
   /* ----------------------------------------------------------- proof chips */
-  .proof{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--ink-04)}
+  /* A chip is one phrase, so it breaks between chips and never inside one.
+     On a 375px row "checked this week" was splitting across two lines with
+     its tick stranded above, which reads as two broken chips rather than one
+     short sentence. */
+  .proof{display:inline-flex;align-items:center;gap:5px;font-size:11px;
+    color:var(--ink-04);white-space:nowrap}
   .proof.hot{color:var(--oxblood);font-weight:600}
   .proof svg{width:12px;height:12px;stroke-width:1.2}
 

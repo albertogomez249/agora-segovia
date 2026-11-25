@@ -246,6 +246,40 @@ def case_a_small_cohort_is_never_reported():
               {"cohort": r2.get("cohort"), "degree": r2.get("degree")})
 
 
+def case_a_plan_count_never_names_anybody():
+    """The launch plan asked for a public board of plans with spaces going
+    spare. That was turned down: it is students announcing where they will be
+    to people they did not choose. This count is the part of the answer that
+    fits — a signal that a place is alive, with nobody identifiable in it.
+
+    So the thing worth testing is not that the number appears. It is that it
+    never appears when it would be small enough to guess from, and that no
+    name, degree or year rides along with it."""
+    print("\nA plan count is a crowd or it is nothing")
+    s, r = call("GET", "/api/offers")
+    offers = r.get("offers") or []
+    s2, r2 = call("GET", "/api/events")
+    events = r2.get("events") or []
+    check("offers and events both answer", s == 200 and s2 == 200 and bool(offers))
+
+    counted = [x for x in offers + events if x.get("plans")]
+    check("the count is carried at all", "plans" in (offers[0] if offers else {}),
+          sorted((offers[0] if offers else {}).keys())[:6])
+    for x in offers + events:
+        n = x.get("plans")
+        check("%s is five or more, or absent" % str(x.get("business_name")
+                                                    or x.get("title_en"))[:22],
+              n in (0, None) or n >= 5, n)
+    check("somewhere does reach the floor", bool(counted),
+          "no venue crossed five — the signal would never be seen")
+
+    # Nothing identifying may travel with it.
+    blob = json.dumps(offers + events).lower()
+    for leak in ("student_id", "student_name", "members", "joined_at",
+                 "plan_members", "plan_code"):
+        check("no '%s' rides along" % leak, leak not in blob)
+
+
 def case_an_invented_category_is_refused():
     print("\nThe category list is a contract, not a suggestion")
     s, r = call("GET", "/api/map")
@@ -331,6 +365,7 @@ def main():
         case_a_new_review_is_not_public(tok)
     case_a_venue_cannot_moderate_itself()
     case_a_small_cohort_is_never_reported()
+    case_a_plan_count_never_names_anybody()
     case_an_invented_category_is_refused()
     case_photos_carry_their_credit()
     print("\n%d passed, %d failed" % (len(PASS), len(FAIL)))
