@@ -242,8 +242,9 @@ def _evening(ts):
 
 def wipe():
     conn = db.connect()
-    for t in ("reviews", "applications", "transactions", "jobs", "events", "offers",
-              "assistant_state", "sessions", "verifications", "businesses", "students"):
+    for t in ("plan_members", "plans", "reviews", "applications", "transactions",
+              "jobs", "events", "offers", "assistant_state", "sessions",
+              "verifications", "businesses", "students"):
         conn.execute("DELETE FROM %s" % t)
     conn.commit(); conn.close()
 
@@ -364,6 +365,71 @@ def run():
         wrote.add((b_id, s_id))
         reviews_made += 1
 
+    # ---------------------------------------------------------------- plans
+    # The launch plan says the only metric that matters in the first two
+    # months is how many people make a SECOND plan, and how long they take.
+    # A metric with nothing behind it cannot be read, so the demo carries
+    # plan history: most people who make one make exactly one, a minority come
+    # back, and the gap between the first and the second is days, not minutes.
+    # These are invented like every other number here — the app says so on
+    # every screen — but their shape is the shape the metric has to survive.
+    plan_rows, member_rows = 0, 0
+    offer_ids = [o[0] for o in db.q("SELECT id FROM offers")] if False else \
+                [r["id"] for r in db.q("SELECT id FROM offers")]
+    event_ids = [r["id"] for r in db.q("SELECT id FROM events")]
+    makers = rnd.sample(sids, k=max(6, int(len(sids) * 0.42)))
+    # Who comes back is decided outright, not by a coin flip per student. The
+    # first attempt rolled the dice twenty-one times and happened to land on
+    # "once" twenty times, which left the metric with nothing to show — and a
+    # demo whose shape depends on a lucky streak is not a demo, it is a
+    # coincidence. A third of the makers return, and a few of those go on.
+    back = makers[:max(2, int(len(makers) * 0.34))]
+    repeats = {s: (3 if i % 4 == 0 else 2) for i, s in enumerate(back)}
+    circle = {s: rnd.sample([x for x in sids if x != s], k=rnd.choice([2, 3, 3, 4]))
+              for s in makers}
+    for s_id in makers:
+        # A second plan is the exception, not the rule: that is what makes it
+        # worth measuring. Roughly a third come back, a few go on from there.
+        n = repeats.get(s_id, 1)
+        first_at = now - rnd.randrange(9 * 86400, 46 * 86400)
+        at = first_at
+        for k in range(n):
+            if k:
+                at += rnd.randrange(2 * 86400, 17 * 86400)
+                if at > now:
+                    break
+            if event_ids and rnd.random() < 0.55:
+                ref_type, ref_id = "event", rnd.choice(event_ids)
+            elif offer_ids:
+                ref_type, ref_id = "offer", rnd.choice(offer_ids)
+            else:
+                break
+            code = "P" + "".join(rnd.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+                                 for _ in range(5))
+            pid = db.run("INSERT INTO plans(student_id,ref_type,ref_id,code,note,created_at) "
+                         "VALUES(?,?,?,?,?,?)", (s_id, ref_type, ref_id, code, "", at))
+            db.run("INSERT INTO plan_members(plan_id,student_id,joined_at) VALUES(?,?,?)",
+                   (pid, s_id, at))
+            plan_rows += 1; member_rows += 1
+            # Someone else actually turning up is the point of a plan — but
+            # who comes is not a lottery over the whole campus. People go out
+            # with the same two or three people, so each organiser has a small
+            # circle and draws from it. Picking mates uniformly across 51
+            # students, as this first did, scattered participation so evenly
+            # that 62% of the cohort appeared to "come back for a second
+            # plan". That is not a plausible retention figure, it is an
+            # artefact of careless seeding, and it flatters the product in
+            # exactly the place where the plan says to be most sceptical.
+            for mate in rnd.sample(circle[s_id], k=min(len(circle[s_id]),
+                                                       rnd.choice([0, 1, 1, 2]))):
+                try:
+                    db.run("INSERT INTO plan_members(plan_id,student_id,joined_at) "
+                           "VALUES(?,?,?)", (pid, mate, at + rnd.randrange(60, 40000)))
+                    member_rows += 1
+                except Exception:
+                    pass
+
+    print("seeded: %d planes, %d asistentes" % (plan_rows, member_rows))
     print("seeded: %d venues reales de Segovia, %d ofertas, %d eventos, %d estudiantes, "
           "%d reseñas, %d compras"
           % (len(bids), len(OFFERS), len(EVENTS), len(sids),

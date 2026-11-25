@@ -68,7 +68,28 @@ async function render() {
     return;
   }
 
+  // The launch plan's one metric, where the people who could act on it will
+  // actually see it. A number that lives in a spreadsheet nobody opens is a
+  // number nobody steers by.
+  let sp = null;
+  try { sp = await Agora.get('/api/mod/second-plan'); } catch (e) { sp = null; }
+
   v.innerHTML =
+    (sp ? `<section class="metric">
+       <div class="k inscript dim">THE SECOND PLAN</div>
+       <p class="big"><b class="figure">${sp.came_back}</b> of
+          <b class="figure">${sp.took_part}</b> who made a plan made another
+${sp.median_days === null ? ''
+            : `, a median of <b class="figure">${sp.median_days}</b> days later`}.</p>
+       <p class="why">A first plan is curiosity and a launch party can manufacture it.
+          The second is the moment the product exists for that person, which is why this
+          is the number to steer by for the first two months — not downloads, not
+          sign-ups. Counted on taking part, not on organising: joining someone else's
+          plan is a plan happening for you.
+          ${sp.demo ? `<b>These are demonstration figures.</b> The rate is a property
+            of invented data, not evidence of anything — the point here is that the
+            number is measured and visible, not what it says today.` : ''}</p>
+     </section>` : '') +
     `<div class="counts">${['pending', 'published', 'rejected'].map(k => `
        <button data-f="${k}" aria-pressed="${FILTER === k}">
          <span class="n">${d.counts[k]}</span><span class="k">${LABEL[k]}</span></button>`).join('')}

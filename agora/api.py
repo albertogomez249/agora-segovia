@@ -808,6 +808,44 @@ def top_picks(ctx, body):
 
 # --------------------------------------------------------- moderation queue
 
+def second_plan(ctx, body):
+    """The one number the launch plan says matters in the first two months.
+
+    Not downloads, not sign-ups: how many people make a SECOND plan, and how
+    many days they take. A first plan is curiosity and a launch party can
+    manufacture it. The second is the moment the product exists for that
+    person, so it is the only one worth steering by — and until now nothing
+    here measured it at all.
+
+    Measured on taking part, not on creating: joining a friend's plan is
+    making a plan happen for you, and counting only the organisers would
+    flatter the organisers and miss the product.
+
+    Moderator-gated because it is an internal number, not a public one, and
+    because it is computed over everybody — it is a count, never a name.
+    """
+    auth(ctx, "moderator")
+    rows = db.q("SELECT student_id, joined_at FROM plan_members ORDER BY joined_at")
+    by = {}
+    for r in rows:
+        by.setdefault(r["student_id"], []).append(r["joined_at"])
+    took_part = len(by)
+    came_back = [v for v in by.values() if len(v) > 1]
+    gaps = sorted(int(round((v[1] - v[0]) / 86400.0)) for v in came_back)
+    median = gaps[len(gaps) // 2] if gaps else None
+    students = db.q("SELECT COUNT(*) n FROM students", one=True)["n"]
+    return {
+        "students": students,
+        "took_part": took_part,
+        "came_back": len(came_back),
+        "rate_pct": round(100.0 * len(came_back) / took_part) if took_part else 0,
+        "median_days": median,
+        "days": gaps,
+        # Said plainly so nobody reads a demonstration as a result.
+        "demo": True,
+    }
+
+
 def mod_queue(ctx, body):
     auth(ctx, "moderator")
     rows = _review_rows("r.status=?", (body.get("status") or "pending",))
@@ -1413,6 +1451,7 @@ ROUTES = {
     ("POST", "/api/reviews"): write_review,
     ("GET",  "/api/top-picks"): top_picks,
     ("GET",  "/api/mod/reviews"): mod_queue,
+    ("GET",  "/api/mod/second-plan"): second_plan,
     ("POST", "/api/mod/decide"): mod_decide,
     ("GET",  "/api/events"): list_events,
     ("GET",  "/api/jobs"): list_jobs,

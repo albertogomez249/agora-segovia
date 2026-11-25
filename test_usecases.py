@@ -212,6 +212,10 @@ def case_a_venue_cannot_moderate_itself():
         s, r = call("POST", "/api/mod/decide",
                     {"id": 1, "decision": "published"}, token=tok)
         check("and it cannot publish anything", s >= 400, (s, r))
+        s, r = call("GET", "/api/mod/second-plan", token=tok)
+        check("nor read how the cohort is behaving", s >= 400, (s, r))
+    s, r = call("GET", "/api/mod/second-plan")
+    check("and a stranger cannot either", s >= 400, (s, r))
     s, r = call("POST", "/api/auth/request",
                 {"email": "info@mesondecandido.es", "role": "moderator"})
     check("nor can it ask for a moderator code", s >= 400, (s, r))
