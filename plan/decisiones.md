@@ -44,10 +44,22 @@ devuelve cuánta gente ha usado algo, y **por debajo de cinco no devuelve
 nada**, forzado en la capa de consulta para que ninguna pantalla pueda
 saltárselo. Hoy mira al pasado («N estudiantes han usado esto»).
 
-Lo mismo mirando adelante daría la señal de vida sin romper nada: *«hay planes
-de estudiantes aquí el jueves»*, a partir de cinco, sin un solo nombre y sin
-decir quién. Un recién llegado vería que el sitio está vivo; nadie quedaría
-expuesto. **No está construido.** Es la propuesta, no un hecho.
+Lo mismo mirando adelante da la señal de vida sin romper nada, y **ya está
+construido** (25 de noviembre, commit `e7998d6`): a partir de cinco, sin un
+solo nombre y sin decir quién. Un recién llegado ve que el sitio está vivo;
+nadie queda expuesto.
+
+Dos precisiones que importan más que el número:
+
+- **Un evento tiene fecha, una oferta no.** El recuento de un evento habla de
+  verdad de lo que viene. Un plan sobre una oferta es solo «vamos a usar
+  esto», así que ahí la ventana son tres semanas y la ficha lo dice con todas
+  las letras. Llamarlo «lo que viene» sería una mentira pequeña, y el único
+  valor de este número es que se pueda tomar al pie de la letra.
+- **El umbral vive en la consulta, no en la pantalla.** Una pantalla puede
+  olvidarse; una consulta no. Y la batería de casos de uso no comprueba que el
+  número salga: comprueba que no salga nunca cuando sería lo bastante pequeño
+  como para adivinar quién, y que no viaje con él ningún identificador.
 
 ### Lo que esto no resuelve
 
