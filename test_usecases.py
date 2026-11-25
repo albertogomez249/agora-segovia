@@ -99,7 +99,24 @@ def case_claiming_gives_a_code(tok):
     priced = [o for o in (offers.get("offers") or []) if o.get("student_cents")]
     if not (tok and priced):
         return check("an offer exists to claim", False, "no offer or no token")
-    dearest = max(priced, key=lambda o: o["student_cents"])
+    # Stock is finite too, not just the wallet. Picking the dearest outright
+    # worked until repeated runs had claimed all eight suckling pigs and the
+    # case started failing on "Sold out" — the product being right and the
+    # test being greedy. An offer with no stock limit cannot be exhausted by
+    # testing; among those, the dearest still exercises the balance rule.
+    stocked = [o for o in priced if o.get("left") is None or o.get("left", 0) > 0]
+    unlimited = [o for o in stocked if o.get("left") is None]
+    pool = unlimited or stocked
+    if not pool:
+        return check("an offer is still available to claim", False,
+                     "every offer is sold out")
+    dearest = max(pool, key=lambda o: o["student_cents"])
+
+    # And the rule itself, where the seed left something exhausted.
+    gone = next((o for o in priced if o.get("left") == 0), None)
+    if gone:
+        s, r = call("POST", "/api/offers/claim", {"offer_id": gone["id"]}, token=tok)
+        check("a sold-out offer is refused", s >= 400, (s, r))
 
     # Empty the question first: can you claim what you cannot pay for?
     s, me = call("GET", "/api/me", token=tok)
@@ -273,12 +290,34 @@ def case_the_server_can_be_recognised():
           isinstance(r.get("students"), int) and isinstance(r.get("businesses"), int), r)
 
 
+def case_the_site_can_ask_if_we_are_up():
+    """The published site lives on github.io and the app on a tunnel, so the
+    site asking "are you up?" is a cross-origin request. Without the header the
+    browser blocks it, the site decides the app is down and offers a
+    demonstration notice — while the app is running perfectly at the other end
+    of that very URL. It happened: the site said the demo was unavailable for
+    as long as it took to notice."""
+    print("\nThe published site can ask whether the app is up")
+    import urllib.request as u
+    req = u.Request(BASE + "/api/health", method="GET")
+    with u.urlopen(req, timeout=20) as r:
+        allow = r.headers.get("Access-Control-Allow-Origin")
+    check("health answers any origin", allow == "*", allow)
+    req2 = u.Request(BASE + "/api/offers", method="GET")
+    with u.urlopen(req2, timeout=20) as r2:
+        allow2 = r2.headers.get("Access-Control-Allow-Origin")
+    # Everything else carries a bearer token; a wildcard there would let any
+    # page a student has open read their wallet.
+    check("and nothing else does", allow2 is None, allow2)
+
+
 def main():
     s, _ = call("GET", "/api/health")
     if s != 200:
         print("Ágora is not answering on %s — start it with ./run.sh --bg" % BASE)
         return 1
     case_the_server_can_be_recognised()
+    case_the_site_can_ask_if_we_are_up()
     case_browsing_needs_no_account()
     tok = case_only_students_get_in()
     case_wrong_code_is_refused()

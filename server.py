@@ -34,6 +34,21 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Cache-Control", "no-store")
+        # The published site is served from github.io and the app from a
+        # tunnel, so the site asking "are you up?" is a cross-origin request.
+        # Without this header the browser blocks it, the site concludes the
+        # app is down and links to a demonstration notice — while the app is
+        # running perfectly on the other end of that very URL. That is exactly
+        # the failure the health check exists to prevent, arriving by another
+        # road.
+        #
+        # Only this one route is opened, and only to GET. Every other endpoint
+        # carries a bearer token, and a wildcard origin across those would let
+        # any page a student happens to have open read their wallet. The
+        # health reply says the app's name and two public counts; there is
+        # nothing in it to protect.
+        if self.path.split("?")[0] == "/api/health":
+            self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(raw)
 
