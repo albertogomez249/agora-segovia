@@ -419,10 +419,19 @@ function declutter() {
     // Sideways before far-vertical: a label beside its pin still reads as
     // belonging to it, a label four rows above it does not.
     const cand = [[0, 0], [w * 0.62, 0], [-w * 0.62, 0]];
-    for (let k = 1; k <= 4; k++) {
+    // Twelve pins on the old town exhausted a four-ring search and three
+    // prices ended up stacked on the live demo's first screen. The fallback
+    // was working as written — leave it on its own point rather than fling it
+    // across the map — but "as written" was still three unreadable prices, so
+    // the search is wider and finer before it gives up: more rings, and a
+    // half-width column between the centre and the sides.
+    for (let k = 1; k <= 7; k++) {
       cand.push([0, -k * step], [0, k * step],
                 [w * 0.56, -k * step], [-w * 0.56, -k * step],
-                [w * 0.56, k * step], [-w * 0.56, k * step]);
+                [w * 0.56, k * step], [-w * 0.56, k * step],
+                [w * 0.3, -k * step], [-w * 0.3, -k * step],
+                [w * 0.3, k * step], [-w * 0.3, k * step],
+                [w * 1.05, -k * step], [-w * 1.05, -k * step]);
     }
     let dx = 0, dy = 0, placed = false;
     for (const [cx, cy] of cand) {
