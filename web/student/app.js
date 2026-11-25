@@ -332,7 +332,7 @@ function drawMap(pins, centre) {
       zIndexOffset: Math.round(1000 - (p.from_eur || 0)),
     }).addTo(MAP);
     m.on('click', () => venueSheet(p));
-    return { id: p.business_id, m };
+    return { id: p.business_id, m, pct: p.best_pct || 0 };
   });
   // The stage is sized in vh and the map is built before layout settles, so the
   // fit has to happen after Leaflet has been told the real size. Fitting first
@@ -388,12 +388,19 @@ function declutter() {
   // Reset first, or offsets compound every time the map moves.
   MARKS.forEach(({ m }) => {
     const el = m.getElement();
-    if (el) { el.style.setProperty('--dx', '0px'); el.style.setProperty('--dy', '0px'); }
+    if (el) {
+      el.style.setProperty('--dx', '0px'); el.style.setProperty('--dy', '0px');
+      el.classList.remove('bare');
+    }
   });
 
+  // Ranked by the size of the discount, not by position on screen. When the
+  // city is too dense to show every price, the ones that survive should be
+  // the best deals — that is the thing this product is for. Position only
+  // breaks ties, so the order is stable while the map is still.
   const order = MARKS
-    .map(({ m }) => ({ m, pt: MAP.latLngToContainerPoint(m.getLatLng()) }))
-    .sort((a, b) => a.pt.y - b.pt.y);   // top ones keep their place
+    .map(({ m, pct }) => ({ m, pct, pt: MAP.latLngToContainerPoint(m.getLatLng()) }))
+    .sort((a, b) => (b.pct - a.pct) || (a.pt.y - b.pt.y));
 
   for (const { m, pt } of order) {
     const el = m.getElement();
@@ -425,22 +432,46 @@ function declutter() {
     // across the map — but "as written" was still three unreadable prices, so
     // the search is wider and finer before it gives up: more rings, and a
     // half-width column between the centre and the sides.
-    for (let k = 1; k <= 7; k++) {
+    // Three rings, not seven. Widening the search was the wrong lever: it
+    // moved labels so far from their pins that the leader line became the
+    // only thing tying them together, and a price four rows from its venue is
+    // not a price you trust. Past three rings the right answer is not to draw
+    // the label at all.
+    for (let k = 1; k <= 3; k++) {
       cand.push([0, -k * step], [0, k * step],
                 [w * 0.56, -k * step], [-w * 0.56, -k * step],
                 [w * 0.56, k * step], [-w * 0.56, k * step],
                 [w * 0.3, -k * step], [-w * 0.3, -k * step],
-                [w * 0.3, k * step], [-w * 0.3, k * step],
-                [w * 1.05, -k * step], [-w * 1.05, -k * step]);
+                [w * 0.3, k * step], [-w * 0.3, k * step]);
     }
     let dx = 0, dy = 0, placed = false;
     for (const [cx, cy] of cand) {
       const c = boxAt(cx, cy);
       if (inside(c) && clear(c)) { dx = cx; dy = cy; placed = true; break; }
     }
-    // Nowhere clean to put it: leave it on its point rather than fling it
-    // across the map. Overlapping honestly beats pointing at the wrong place.
-    if (!placed) { dx = 0; dy = 0; }
+    // Nowhere clean to put it. Earlier this left the label sitting on its own
+    // point and overlapping a neighbour, on the reasoning that overlapping
+    // honestly beats pointing at the wrong place — which is true, and still
+    // left seven unreadable prices stacked on the first screen of the live
+    // demo. Two prices on top of each other are not one price and a bit of
+    // mess: they are zero prices, because neither can be read.
+    //
+    // So the label is not drawn. The venue keeps its point, in its category
+    // colour, at its exact position, and it is still a 44px target that opens
+    // the same sheet — nothing is lost from the map but the text, and the
+    // text is what was failing. Zoom in and there is room again, so the
+    // prices come back as the city opens up. The list under the map always
+    // had every one of them anyway.
+    if (!placed) {
+      el.classList.add('bare');
+      // A bare point still reserves its own small square, so the next label
+      // does not land on top of a dot and hide the thing it marks.
+      boxes.push({ l: pt.x - 11, r: pt.x + 11, t: pt.y - 11, b: pt.y + 11 });
+      el.style.setProperty('--dx', '0px');
+      el.style.setProperty('--dy', '0px');
+      el.classList.remove('moved');
+      continue;
+    }
     // Whatever happened above, a price that runs off the edge of the stage is
     // not a price. Overlapping a neighbour is recoverable; being cut in half
     // by the bezel is not, so the clamp wins over the collision test.

@@ -403,6 +403,21 @@
     height:44px;transform:translateY(-50%);z-index:-1}
   .pin .d{flex:0 0 auto;width:17px;height:17px;border-radius:50%;display:grid;place-items:center;color:#fff}
   .pin .d svg{width:11px;height:11px;stroke-width:1.6}
+  /* A venue whose price had nowhere legible to go. The capsule falls away and
+     what is left is the mark that was already inside it: the category disc, on
+     the exact spot, still a full target opening the same sheet. It is the same
+     pin with its text removed, not a different kind of thing — which is why
+     the disc keeps its size and colour and simply loses the shell around it. */
+  .pin.bare .b{
+    background:none;border:0;box-shadow:none;padding:0;gap:0;
+    transform:translate(-50%,-50%);
+  }
+  .pin.bare .b .pr,.pin.bare .b::after,.pin.bare .w,.pin.bare::before,.pin.bare::after{display:none}
+  .pin.bare .d{
+    width:19px;height:19px;
+    box-shadow:0 0 0 2px var(--stone-00),0 2px 6px rgba(21,24,28,.3);
+  }
+  .pin.bare .d svg{width:12px;height:12px}
   .pin.sel .b{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
   .pin.sel .b::after{background:var(--ink-00);border-color:var(--ink-00)}
   /* A price with no object is not an offer. The pin carries what it buys on a
