@@ -1,0 +1,360 @@
+/* ============================================================================
+   ÁGORA — design system
+   Roman inscriptional display type on travertine, bronze as the only metal,
+   oxblood reserved exclusively for price. Hairlines instead of boxes.
+   UI text uses the native system face so it renders the way the OS intends.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Marcellus&display=swap');
+
+:root{
+  /* --- stone ------------------------------------------------------------ */
+  --stone-00:#FBF9F5;
+  --stone-01:#F4F0E8;
+  --stone-02:#EBE5D9;
+  --stone-03:#DFD7C7;
+  --stone-04:#C9BFAC;
+
+  /* --- ink -------------------------------------------------------------- */
+  /* --- contrast ------------------------------------------------------
+     Measured, not judged by eye. --ink-04 was #78828E, which is 3.43:1 on
+     the travertine and 3.11:1 on stone-02 — under the 4.5:1 that small text
+     needs — and it is the colour of nearly every secondary line in the
+     product: the second line of every row, opening hours, how big the
+     discount is. This app is read on a phone in the street in Segovia, in
+     sunlight, which is the worst case for a ratio that was already failing
+     indoors. #5A6470 clears it on all three stones (5.72 / 5.29 / 4.80) and
+     is still clearly the quiet colour.
+     Bronze has the same problem as text: #9C7246 is 3.76:1 on travertine, so
+     it keeps the surfaces and marks it was chosen for and text that has to be
+     read takes --bronze-text. White on the bronze button was 4.21:1, which is
+     why the button fill is now --bronze-lo at 5.32:1.
+     Oxblood, the price, was already fine at 6.60:1 — the signature colour
+     needed nothing. */
+  --ink-00:#15181C;
+  --ink-01:#1F242A;
+  --ink-02:#2B323A;
+  --ink-03:#4A535E;
+  --ink-04:#5A6470;
+
+  /* --- metal & earth ---------------------------------------------------- */
+  --bronze:#9C7246;        /* surfaces, borders, marks — not text on light */
+  --bronze-text:#7E5932;   /* bronze where it has to be READ */
+  --bronze-lo:#8A6239;
+  --bronze-hi:#C19A68;
+  --bronze-wash:#F0E8DC;
+  --oxblood:#8E3B22;        /* price only */
+  --verd:#4A6B55;           /* confirmations only */
+
+  --line:rgba(21,24,28,.10);
+  --line-soft:rgba(21,24,28,.06);
+  --line-dark:rgba(244,240,232,.14);
+
+  --ui:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;
+  --display:'Marcellus',Georgia,'Times New Roman',serif;
+
+  --ease:cubic-bezier(.32,.72,0,1);
+  --tap:cubic-bezier(.2,0,.2,1);
+
+  /* --- type scale -------------------------------------------------------
+     Seven text steps and six display steps. Nothing in the product may use
+     a size that is not on this list. The product had thirty-two sizes, ten
+     of them inside a 4px band: 12 vs 12.5 is not a decision anyone can see,
+     it is drift, and drift is what makes an interface feel assembled rather
+     than designed. Text stops at 16 because iOS zooms a focused input under
+     that; display starts at 18 because below it Marcellus loses its serifs. */
+  --fs-10:10px;  /* inscriptional capitals only */
+  --fs-11:11px;  /* field labels, overlines */
+  --fs-12:12px;  /* meta, legal, counts */
+  --fs-13:13px;  /* secondary meta */
+  --fs-14:14px;  /* secondary body */
+  --fs-15:15px;  /* body */
+  --fs-16:16px;  /* primary body, every input */
+  --ds-18:18px; --ds-21:21px; --ds-25:25px;
+  --ds-30:30px; --ds-36:36px; --ds-44:44px; --ds-52:52px;
+
+  /* --- space scale ------------------------------------------------------
+     4px base with a 2px half-step for optical work inside a control. */
+  --s-2:2px;  --s-4:4px;   --s-6:6px;   --s-8:8px;
+  --s-12:12px; --s-16:16px; --s-20:20px; --s-24:24px;
+  --s-32:32px; --s-40:40px; --s-56:56px; --s-80:80px;
+
+  /* --- press -------------------------------------------------------------
+     One idiom per kind of thing. A control shrinks; a surface washes. A row
+     the width of the screen must never scale: there is no plausible origin
+     for the movement and it reads as the page flexing. */
+  --press-ctl:scale(.97);
+  --press-card:scale(.988);
+}
+
+/* --- the same tokens, on ink ------------------------------------------
+   A quiet grey cannot serve both stones and ink. #78828E was 4.56:1 on the
+   dark panel and 3.43:1 on travertine: passing on one surface, failing on the
+   other, and the product mostly lives on travertine — so --ink-04 went darker
+   and the dark verification screen, which inherits these tokens, dropped to
+   2.96:1. Fixing one surface broke the other, which is what a single value for
+   two backgrounds always does.
+   So the dark surfaces redefine the tokens rather than the components
+   overriding colours one by one: anything inside them reads the right value
+   without knowing it is on ink. 7.12:1 and 6.86:1 respectively. */
+/* Selected by class, never by id. The first version of this rule listed
+   `#gate`, and the student's gate is ink while the moderation console's gate
+   is travertine — the same id on opposite surfaces. Light-on-dark values
+   landed on a light panel and took its text to 2.20:1, which is worse than
+   anything this rule was written to fix. A surface has to declare itself. */
+.on-ink,aside,header.bar,.mcard,.brandbar,header.hero,section.band.ink,footer.foot{
+  --ink-04:#9AA5B1;
+  --ink-03:#B2BBC5;
+  --bronze-text:var(--bronze-hi);
+}
+/* And back again. A dark band is not dark all the way down: the home page
+   sets light cards inside one, and tokens cascade, so the light-on-dark greys
+   were inherited straight onto travertine and took that text to 1.85:1 — the
+   rule meant to fix contrast causing a worse failure two levels in. Any light
+   surface nested in a dark one restores the root values. This is the third
+   time in this pass that a surface rule leaked into a surface of the opposite
+   kind; a region cannot be assumed to be one colour all the way down.
+   The band taught the same lesson twice: `section.band` is dark on the home
+   page and travertine on the Spanish one, and the project already said so —
+   the dark ones carry `.ink`. The convention existed and the selector simply
+   did not read it. */
+.on-ink .on-stone,.on-stone,
+section.band.ink a.door,section.band.ink .f,header.hero a.door,footer.foot .f{
+  --ink-04:#5A6470;
+  --ink-03:#4A535E;
+  --bronze-text:#7E5932;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--ui);
+  font-size:16px;line-height:1.45;letter-spacing:-.01em;
+  color:var(--ink-00);background:var(--stone-01);
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+button,input,select,textarea{font:inherit;color:inherit;letter-spacing:inherit}
+button{background:none;border:none;cursor:pointer}
+a{color:inherit;text-decoration:none}
+svg{display:block}
+.hide{display:none !important}
+
+/* --------------------------------------------------------------- type --- */
+.display{font-family:var(--display);font-weight:400;letter-spacing:0}
+.t-hero{font-family:var(--display);font-size:clamp(36px,8vw,44px);line-height:1.04;letter-spacing:-.005em}
+.t-title{font-family:var(--display);font-size:30px;line-height:1.1}
+.t-sub{font-family:var(--display);font-size:21px;line-height:1.2}
+.t-body{font-size:15px;line-height:1.5;color:var(--ink-02)}
+.t-meta{font-size:13px;line-height:1.4;color:var(--ink-04);letter-spacing:0}
+
+/* Roman inscriptional label: capitals, wide tracking, interpuncts */
+.inscript{
+  font-family:var(--display);
+  font-size:10px;text-transform:uppercase;letter-spacing:.34em;
+  color:var(--bronze-text);line-height:1;
+  margin-right:-.34em;  /* cancel the trailing letter-space */
+}
+.inscript.dim{color:var(--ink-04)}
+/* A numeral inside an inscriptional label keeps the label's tracking, size and
+   colour: only the drawing of the digits changes, so the line still reads as
+   one run of Roman capitals. */
+.inscript .figure{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;
+  font-size:inherit;letter-spacing:inherit;color:inherit;font-weight:600}
+.inscript.on-dark{color:var(--bronze-hi)}
+
+.numeral{font-family:var(--display);font-feature-settings:'lnum';letter-spacing:.02em}
+
+/* Marcellus is cut from Trajan, and Trajan has no numerals at all: the ones
+   Marcellus supplies are drawn to sit beside inscriptional capitals, so its 1
+   is an I and its 0 an O. That is a correct decision by the type designer and
+   the wrong face for a number anybody has to READ. The moderation console was
+   showing "IO waiting on you", "4I published" and "O rejected" — three of
+   three misread.
+   I first exempted prices from this, reasoning that the € and the decimal
+   point give enough context that nobody parses €I2.50 as anything but twelve
+   fifty, and that the oxblood serif price is the signature of the product.
+   Then I looked at one at its real size: "€IO.OO", in oxblood, at 36px, the
+   most prominent number anywhere in the app. The reasoning was wrong. What
+   makes the price the signature is the oxblood and the scale, not the serif,
+   and both survive the change.
+   So the rule has no exceptions: Marcellus sets words, never a number anyone
+   has to read. Numbers take the interface face with tabular lining figures,
+   where a 1 is a 1 and a 0 is not an O. */
+.figure{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;
+  font-weight:600;letter-spacing:-.01em}
+.price{font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;
+  font-size:25px;line-height:1;color:var(--oxblood);letter-spacing:-.015em}
+.price.lg{font-size:36px}
+.was{font-size:13px;color:var(--ink-04);text-decoration:line-through;letter-spacing:0}
+
+/* ------------------------------------------------------------ surfaces --- */
+.rule{height:1px;background:var(--line);border:0}
+.rule-bronze{height:1px;background:linear-gradient(90deg,var(--bronze) 0%,rgba(156,114,70,.15) 100%);border:0}
+
+/* --------------------------------------------------------------- icons ---
+   The marks are authored at stroke-width 1.5 in a 24px box and carry
+   vector-effect:non-scaling-stroke, so the stroke is in screen pixels and
+   does NOT shrink with the box. Every context that sizes an icon must
+   therefore also state its weight, or a 12px badge gets the same literal
+   filo as a 38px illustration. The rule is optical, not arithmetic: the
+   stroke should read as the same weight as the text beside it, which lands
+   around 8-12% of the box, heavier at the small end.
+       38px  1.25      18px  1.45      12px  1.5
+   Anything below 11px belongs to the app that draws it, which knows the
+   background it sits on. */
+
+/* ------------------------------------------------------------- buttons --- */
+.btn{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:50px;padding:0 22px;border-radius:12px;
+  background:var(--ink-00);color:var(--stone-00);
+  font-size:16px;font-weight:500;letter-spacing:-.01em;
+  transition:transform .18s var(--tap),opacity .18s var(--tap),background .18s var(--tap);
+}
+.btn:active{transform:var(--press-ctl)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn--bronze{background:var(--bronze-lo);color:#FFFDF9}
+.btn--quiet{background:transparent;color:var(--ink-02);border:1px solid var(--line)}
+.btn--plain{background:transparent;color:var(--bronze-text);min-height:44px;padding:0 6px;font-size:15px}
+.btn--sm{min-height:44px;padding:0 14px;font-size:14px;border-radius:9px}
+.btn--block{display:flex;width:100%}
+.btn svg{width:18px;height:18px;flex:0 0 auto;stroke-width:1.45}
+.btn .ld{width:16px;height:16px;border:2px solid currentColor;border-right-color:transparent;
+  border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* --------------------------------------------------------------- forms --- */
+.field{display:block;margin:0 0 18px}
+.field > .lbl{
+  display:block;font-size:11px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--ink-04);margin:0 0 8px;font-weight:600;
+}
+.inp{
+  width:100%;min-height:50px;padding:13px 15px;
+  background:var(--stone-00);border:1px solid var(--line);border-radius:11px;
+  font-size:16px;transition:border-color .16s var(--tap),background .16s var(--tap);
+}
+.inp:focus{outline:none;border-color:var(--bronze);background:#fff}
+.inp::placeholder{color:var(--ink-04)}
+textarea.inp{min-height:84px;resize:vertical;line-height:1.5}
+.field.err .inp{border-color:var(--oxblood)}
+.field .msg{font-size:12px;color:var(--oxblood);margin:7px 0 0;display:none}
+.field.err .msg{display:block}
+
+/* code entry: six discrete glyphs */
+.codefield{
+  width:100%;min-height:62px;text-align:center;
+  font-family:var(--ui);font-variant-numeric:tabular-nums lining-nums;font-weight:600;
+  font-size:30px;letter-spacing:.42em;text-indent:.42em;
+  background:var(--stone-00);border:1px solid var(--line);border-radius:12px;
+}
+.codefield:focus{outline:none;border-color:var(--bronze)}
+
+/* --------------------------------------------------------------- chips --- */
+.chiprow{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chiprow::-webkit-scrollbar{display:none}
+/* A chip is 34px tall because that is what reads well in a row of them, and
+   34px is not a target: the guideline is 44, and these are the main filter on
+   the main screen. So the hit area is grown without growing the drawing — a
+   transparent band above and below, which costs nothing visually and gives the
+   thumb the 44 it needs. The row's own vertical padding keeps neighbours from
+   overlapping. */
+.chip{
+  flex:0 0 auto;min-height:34px;padding:0 14px;border-radius:999px;position:relative;
+  display:inline-flex;align-items:center;
+  font-size:13px;font-weight:500;color:var(--ink-03);
+  background:transparent;border:1px solid var(--line);
+  transition:background .16s var(--tap),color .16s var(--tap),border-color .16s var(--tap);
+}
+.chip[aria-pressed="true"]{background:var(--ink-00);color:var(--stone-00);border-color:var(--ink-00)}
+.chip::after{content:'';position:absolute;left:0;right:0;top:50%;
+  height:44px;transform:translateY(-50%)}
+.chip:active{transform:var(--press-ctl)}
+.chip[disabled]{opacity:.45}
+
+/* --------------------------------------------------------------- badge --- */
+.badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  padding:4px 8px;border-radius:5px;background:var(--stone-02);color:var(--ink-03);
+}
+.badge svg{width:12px;height:12px;flex:0 0 auto;stroke-width:1.5}
+.badge--bronze{background:var(--bronze-wash);color:var(--bronze-lo)}
+.badge--live{background:rgba(74,107,85,.12);color:var(--verd)}
+.badge--ink{background:var(--ink-00);color:var(--stone-01)}
+
+/* ---------------------------------------------------------------- rows --- */
+.rows{display:flex;flex-direction:column}
+.row-item{
+  position:relative;display:flex;gap:14px;align-items:flex-start;
+  width:100%;text-align:left;padding:17px 0;
+  border-bottom:1px solid var(--line-soft);
+  transition:opacity .16s var(--tap);
+}
+.row-item:last-child{border-bottom:0}
+.row-item:active{background:var(--stone-02)}
+.row-item .body{flex:1;min-width:0;display:block}
+.row-item .ttl{display:block;font-size:16px;font-weight:600;line-height:1.3;letter-spacing:-.015em}
+.row-item .sub{display:block;font-size:13px;color:var(--ink-04);margin:3px 0 0;letter-spacing:0}
+.row-item .tail{display:block;text-align:right;flex:0 0 auto;padding-top:2px;white-space:nowrap}
+
+/* ------------------------------------------------------------- skeleton --- */
+.sk{background:linear-gradient(90deg,var(--stone-02) 25%,var(--stone-01) 37%,var(--stone-02) 63%);
+  background-size:400% 100%;animation:shimmer 1.4s ease infinite;border-radius:5px}
+@keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ---------------------------------------------------------------- misc --- */
+.empty{padding:56px 24px;text-align:center}
+.empty .ic{margin:0 auto 18px;opacity:.3;width:38px;height:38px}
+.empty .ic svg{width:38px;height:38px;stroke-width:1.25}
+.empty .t{font-family:var(--display);font-size:18px;margin:0 0 6px}
+.empty .d{font-size:14px;color:var(--ink-04);max-width:30ch;margin:0 auto}
+
+/* ------------------------------------------------------------- photos ---
+   A venue photograph sits over its generated pattern, so the frame has the
+   venue's own colour from the first paint and the picture fades in on top.
+   If the file is missing or fails, the img removes itself and the pattern is
+   simply what you see — no grey box, no broken-image icon. */
+.plate-ph{display:block;position:absolute;inset:0;width:100%;height:100%;overflow:hidden}
+.plate-ph > svg{position:absolute;inset:0}
+.plate-ph > img{
+  position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;
+  opacity:0;transition:opacity .45s var(--ease);
+}
+.plate-ph > img.on{opacity:1}
+/* The hero of a sheet and the art of a card already establish their own
+   stacking context; the small square on a list row does not. */
+.row-item .lead{position:relative}
+
+.stagger > *{opacity:0;animation:rise .5s var(--ease) forwards}
+@keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+/* The ring follows whatever radius the element already has — a pill stays a
+   pill. The previous rule set border-radius on the element itself, which
+   squared off every chip the moment it took focus. */
+:focus-visible{outline:2px solid var(--bronze);outline-offset:3px}
+@media (hover:hover) and (pointer:fine){
+  .btn--bronze:hover{background:#7E5932}
+  .btn--quiet:hover{background:var(--stone-02)}
+  .btn--plain:hover{color:var(--bronze-lo)}
+  .chip:hover{border-color:var(--ink-04)}
+  .row-item:hover{background:var(--stone-02)}
+}
+
+/* ------------------------------------------------- review language note ---
+   International students reported opening a venue and finding its reviews in
+   Spanish. A translation now shows by default where we have one, with the
+   student's own words a tap away — a translation you cannot check is worth
+   less than one you can. */
+.revlang{display:inline-flex;align-items:center;gap:6px;margin:8px 0 0;padding:0;
+  font-size:11.5px;color:var(--ink-04);text-align:left;line-height:1.4}
+.revlang svg{width:12px;height:12px;flex:0 0 12px;opacity:.75}
+button.revlang{text-decoration:underline;text-underline-offset:2px;cursor:pointer}
+button.revlang:active{opacity:.6}
+.revlang.is-plain{text-decoration:none}
+
+/* Codes held on the device, for a doorway with no signal. */
+.passcode{font-family:var(--display);font-size:19px;letter-spacing:.16em;
+  color:var(--ink-00);font-variant-numeric:tabular-nums}
